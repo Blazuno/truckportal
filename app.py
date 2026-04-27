@@ -7,7 +7,7 @@ from functools import wraps
 import os
 
 app = Flask(__name__)
-app.secret_key = 'change-this-in-production-use-secrets-module'
+app.secret_key = os.environ.get('SECRET_KEY', 'fallback-for-local-dev')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///portal.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'uploads')
