@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Viveck Aryan Transport{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --coal:    #0f1115;
+      --dark:    #181c23;
+      --panel:   #1e2330;
+      --border:  #2a3045;
+      --muted:   #3a4260;
+      --dim:     #6b7a9e;
+      --text:    #c8d0e8;
+      --bright:  #edf0fa;
+      --amber:   #f5a623;
+      --amber2:  #e8920f;
+      --green:   #3ecf8e;
+      --red:     #f55656;
+      --blue:    #4a90d9;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--coal);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      font-weight: 400;
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    nav {
+      background: var(--dark);
+      border-bottom: 2px solid var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: 0.05em;
+      color: var(--bright);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-brand span { color: var(--amber); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--dim);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--amber); }
+
+    .nav-user {
+      font-size: 0.85rem;
+      color: var(--dim);
+    }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--muted);
+      color: var(--dim);
+      padding: 0.35rem 0.9rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Barlow', sans-serif;
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+    }
+
+    .page-header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+    }
+
+    .page-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 2rem;
+      letter-spacing: 0.04em;
+      color: var(--bright);
+      text-transform: uppercase;
+    }
+
+    .page-subtitle {
+      color: var(--dim);
+      font-size: 0.9rem;
+      margin-top: 0.3rem;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 1.25rem;
+    }
+
+    /* ── FORMS ── */
+    .form-group { margin-bottom: 1.25rem; }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 0.5rem;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    select {
+      width: 100%;
+      background: var(--dark);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 0.75rem 1rem;
+      color: var(--bright);
+      font-family: 'Barlow', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus { border-color: var(--amber); }
+
+    .upload-area {
+      border: 2px dashed var(--muted);
+      border-radius: 8px;
+      padding: 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--dark);
+      position: relative;
+    }
+
+    .upload-area:hover { border-color: var(--amber); }
+
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .upload-text { color: var(--dim); font-size: 0.9rem; }
+    .upload-text strong { color: var(--amber); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.65rem 1.5rem;
+      border-radius: 5px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary  { background: var(--amber); color: var(--coal); }
+    .btn-primary:hover  { background: var(--amber2); }
+    .btn-sm { padding: 0.35rem 0.85rem; font-size: 0.85rem; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--dim); }
+    .btn-ghost:hover { border-color: var(--amber); color: var(--amber); }
+    .btn-danger { background: transparent; border: 1px solid var(--border); color: var(--red); }
+    .btn-danger:hover { background: var(--red); color: white; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    thead { background: var(--dark); }
+
+    th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--dim);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .badge-pending  { background: rgba(245,166,35,0.15); color: var(--amber); }
+    .badge-reviewed { background: rgba(74,144,217,0.15); color: var(--blue); }
+    .badge-paid     { background: rgba(62,207,142,0.15); color: var(--green); }
+
+    /* ── ALERTS ── */
+    .alerts { margin-bottom: 1.5rem; }
+
+    .alert {
+      padding: 0.85rem 1.25rem;
+      border-radius: 5px;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      border-left: 3px solid;
+    }
+
+    .alert-success { background: rgba(62,207,142,0.1); border-color: var(--green); color: var(--green); }
+    .alert-error   { background: rgba(245,86,86,0.1);  border-color: var(--red);   color: var(--red); }
+
+    /* ── STATS ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--bright);
+    }
+
+    .stat-value.amber { color: var(--amber); }
+    .stat-value.green { color: var(--green); }
+
+    /* ── EMPTY ── */
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: var(--dim);
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+    .empty p { font-size: 0.95rem; }
+
+    /* ── AUTH PAGE ── */
+    .auth-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: var(--coal);
+    }
+
+    .auth-box {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .auth-logo {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .auth-logo h1 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 2.5rem;
+      letter-spacing: 0.05em;
+      color: var(--bright);
+    }
+
+    .auth-logo h1 span { color: var(--amber); }
+    .auth-logo p { color: var(--dim); font-size: 0.85rem; margin-top: 0.3rem; }
+
+    .auth-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2.25rem;
+    }
+
+    .auth-card h2 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.4rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--bright);
+      margin-bottom: 1.75rem;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: 0.875rem;
+      color: var(--dim);
+    }
+
+    .auth-footer a { color: var(--amber); text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    /* ── INLINE FORM ── */
+    .inline-form { display: inline; }
+    .inline-form select {
+      width: auto;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+{% if session.user_id %}
+<nav>
+  <a class="nav-brand" href="{{ url_for('index') }}">Viveck Aryan <span>Transport</span></a>
+  <ul class="nav-links">
+    {% if session.is_admin %}
+      <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+    {% else %}
+      <li><a href="{{ url_for('dashboard') }}">My Invoices</a></li>
+    {% endif %}
+  </ul>
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <span class="nav-user">{{ session.user_name }}</span>
+    <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>
+  </div>
+</nav>
+{% endif %}
+
+{% block body %}{% endblock %}
+
+</body>
+</html>

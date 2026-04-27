@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}My Invoices — Viveck Aryan Transport{% endblock %}
+
+{% block body %}
+<div class="container">
+
+  <div class="page-header">
+    <div class="page-title">My Invoices</div>
+    <div class="page-subtitle">Upload and track your submitted invoices</div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="alerts">
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="card-title">Upload Invoice</div>
+    <form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data">
+      <div class="upload-area" id="uploadArea">
+        <input type="file" name="invoice" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" required/>
+        <div class="upload-icon">📄</div>
+        <div class="upload-text" id="uploadText">
+          <strong>Click to choose a file</strong> or drag &amp; drop<br/>
+          PDF, PNG, JPG — up to 16 MB
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:1.25rem;">
+        Submit Invoice
+      </button>
+    </form>
+  </div>
+
+  <!-- Invoice History -->
+  <div class="card">
+    <div class="card-title">Submission History</div>
+
+    {% if invoices %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Submitted</th>
+            <th>Status</th>
+            <th>Download</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr>
+            <td>{{ inv.original }}</td>
+            <td>{{ inv.uploaded.strftime('%b %d, %Y  %I:%M %p') }}</td>
+            <td>
+              <span class="badge badge-{{ inv.status.lower() }}">{{ inv.status }}</span>
+            </td>
+            <td>
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('download', invoice_id=inv.id) }}">
+                ↓ Download
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon">📭</div>
+      <p>No invoices submitted yet.<br/>Upload your first one above.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+  const input = document.getElementById('fileInput');
+  const text  = document.getElementById('uploadText');
+  input.addEventListener('change', () => {
+    if (input.files.length) {
+      text.innerHTML = `<strong>${input.files[0].name}</strong><br/><span style="color:var(--green)">Ready to submit</span>`;
+    }
+  });
+</script>
+{% endblock %}

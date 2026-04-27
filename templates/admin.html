@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — Viveck Aryan Transport{% endblock %}
+
+{% block body %}
+<div class="container">
+
+  <div class="page-header">
+    <div class="page-title">Admin Dashboard</div>
+    <div class="page-subtitle">All submitted invoices across subcontractors</div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="alerts">
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Stats -->
+  {% set total    = invoices|length %}
+  {% set pending  = invoices|selectattr('status','equalto','Pending')|list|length %}
+  {% set reviewed = invoices|selectattr('status','equalto','Reviewed')|list|length %}
+  {% set paid     = invoices|selectattr('status','equalto','Paid')|list|length %}
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Invoices</div>
+      <div class="stat-value">{{ total }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value amber">{{ pending }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Reviewed</div>
+      <div class="stat-value" style="color:var(--blue)">{{ reviewed }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Paid</div>
+      <div class="stat-value green">{{ paid }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Contractors</div>
+      <div class="stat-value">{{ contractors|length }}</div>
+    </div>
+  </div>
+
+  <!-- Invoice Table -->
+  <div class="card">
+    <div class="card-title">All Invoices</div>
+
+    {% if invoices %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Contractor</th>
+            <th>File</th>
+            <th>Submitted</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr>
+            <td style="color:var(--dim)">{{ inv.id }}</td>
+            <td>
+              <strong style="color:var(--bright)">{{ inv.submitter.name }}</strong><br/>
+              <span style="font-size:0.8rem;color:var(--dim)">{{ inv.submitter.email }}</span>
+            </td>
+            <td>{{ inv.original }}</td>
+            <td style="color:var(--dim)">{{ inv.uploaded.strftime('%b %d, %Y') }}</td>
+            <td>
+              <!-- Status update form -->
+              <form class="inline-form" method="POST" action="{{ url_for('update_status', invoice_id=inv.id) }}">
+                <select name="status" onchange="this.form.submit()" style="background:var(--dark);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:0.3rem 0.5rem;font-family:'Barlow',sans-serif;font-size:0.82rem;cursor:pointer;">
+                  <option value="Pending"  {% if inv.status == 'Pending'  %}selected{% endif %}>Pending</option>
+                  <option value="Reviewed" {% if inv.status == 'Reviewed' %}selected{% endif %}>Reviewed</option>
+                  <option value="Paid"     {% if inv.status == 'Paid'     %}selected{% endif %}>Paid</option>
+                </select>
+              </form>
+            </td>
+            <td>
+              <div style="display:flex;gap:0.5rem;align-items:center;">
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('download', invoice_id=inv.id) }}">
+                  ↓ Download
+                </a>
+                <form class="inline-form" method="POST" action="{{ url_for('delete_invoice', invoice_id=inv.id) }}"
+                      onsubmit="return confirm('Delete this invoice permanently?')">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon">📭</div>
+      <p>No invoices have been submitted yet.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Contractor List -->
+  <div class="card">
+    <div class="card-title">Registered Contractors</div>
+    {% if contractors %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Joined</th>
+            <th>Invoices</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in contractors %}
+          <tr>
+            <td style="color:var(--bright)">{{ c.name }}</td>
+            <td style="color:var(--dim)">{{ c.email }}</td>
+            <td style="color:var(--dim)">{{ c.created.strftime('%b %d, %Y') }}</td>
+            <td>{{ c.invoices|length }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon">👥</div>
+      <p>No contractors registered yet.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

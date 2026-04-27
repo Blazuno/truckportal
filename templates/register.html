@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Register — Viveck Aryan Transport{% endblock %}
+
+{% block body %}
+<div class="auth-wrap">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <h1>Viveck Aryan <span>Transport</span></h1>
+      <p>Subcontractor Invoice Portal</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="alerts">
+          {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }}">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="auth-card">
+      <h2>Create Account</h2>
+      <form method="POST" action="{{ url_for('register') }}">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" name="name" required placeholder="John Smith"/>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com"/>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" required placeholder="Min 8 characters"/>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:0.5rem;">
+          Create Account
+        </button>
+      </form>
+    </div>
+
+    <div class="auth-footer">
+      Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
