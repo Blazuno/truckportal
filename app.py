@@ -96,6 +96,15 @@ class LoadLeg(db.Model):
     route_id = db.Column(db.Integer, db.ForeignKey('route.id'), nullable=False)
     route    = db.relationship('Route')
 
+class LoadDoc(db.Model):
+    """Documents attached to a load confirmation by the subcontractor."""
+    id       = db.Column(db.Integer, primary_key=True)
+    load_id  = db.Column(db.Integer, db.ForeignKey('load_confirmation.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)   # R2 key
+    original = db.Column(db.String(255), nullable=False)   # display name
+    uploaded = db.Column(db.DateTime, default=datetime.utcnow)
+    load     = db.relationship('LoadConfirmation', backref=db.backref('docs', lazy=True, cascade='all, delete-orphan'))
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def allowed_file(filename):
@@ -397,17 +406,12 @@ def new_load():
     if not routes:
         flash('No routes have been set up yet. Please contact the admin.','error')
         return redirect(url_for('dashboard'))
-    routes_json = [
-        {'id': r.id, 'from_loc': r.from_loc, 'to_loc': r.to_loc,
-         'shipper': r.shipper, 'rate': float(r.rate),
-         'fuel_surcharge': float(r.fuel_surcharge or 0)}
-        for r in routes
-    ]
     if request.method == 'POST':
         load_date    = request.form.get('load_date','').strip()
         commodity    = request.form.get('commodity','').strip()
         weight       = request.form.get('weight','').strip()
         trailer_type = request.form.get('trailer_type','').strip()
+        load_number  = request.form.get('load_number','').strip() or None
         route_ids    = request.form.getlist('route_id[]')
         route_ids    = [r for r in route_ids if r and r != '0']
         if not load_date or not commodity or not weight:
@@ -419,11 +423,23 @@ def new_load():
         load = LoadConfirmation(
             order_number=generate_order_number(), user_id=session['user_id'],
             load_date=load_date, commodity=commodity,
-            weight=weight, trailer_type=trailer_type)
+            weight=weight, trailer_type=trailer_type, load_number=load_number)
         db.session.add(load)
         db.session.flush()
         for i, rid in enumerate(route_ids):
             db.session.add(LoadLeg(load_id=load.id, position=i+1, route_id=int(rid)))
+        # Handle doc uploads
+        files = request.files.getlist('load_docs[]')
+        for f in files:
+            if f and f.filename and allowed_file(f.filename):
+                original  = secure_filename(f.filename)
+                timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+                r2_key    = f"load_docs/{load.id}_{timestamp}_{original}"
+                try:
+                    get_r2().upload_fileobj(f, R2_BUCKET, r2_key)
+                    db.session.add(LoadDoc(load_id=load.id, filename=r2_key, original=original))
+                except Exception as e:
+                    app.logger.error(f"Doc upload error: {e}")
         db.session.commit()
         flash(f'Load {load.order_number} submitted for review.','success')
         return redirect(url_for('dashboard'))
@@ -446,6 +462,64 @@ def download_load(load_id):
         app.logger.error(f"R2 presign error: {e}")
         flash('Could not generate download link.','error')
         return redirect(url_for('dashboard'))
+
+@app.route('/load/<int:load_id>/upload_doc', methods=['POST'])
+@login_required
+def upload_load_doc(load_id):
+    load = LoadConfirmation.query.get_or_404(load_id)
+    if load.user_id != session['user_id'] and not session.get('is_admin'):
+        abort(403)
+    files = request.files.getlist('load_docs[]')
+    uploaded = 0
+    for f in files:
+        if f and f.filename and allowed_file(f.filename):
+            original  = secure_filename(f.filename)
+            timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+            r2_key    = f"load_docs/{load.id}_{timestamp}_{original}"
+            try:
+                get_r2().upload_fileobj(f, R2_BUCKET, r2_key)
+                db.session.add(LoadDoc(load_id=load.id, filename=r2_key, original=original))
+                uploaded += 1
+            except Exception as e:
+                app.logger.error(f"Doc upload error: {e}")
+    db.session.commit()
+    if uploaded:
+        flash(f'{uploaded} document(s) uploaded.','success')
+    else:
+        flash('No valid files uploaded.','error')
+    return redirect(url_for('dashboard'))
+
+@app.route('/load/doc/<int:doc_id>/download')
+@login_required
+def download_load_doc(doc_id):
+    doc  = LoadDoc.query.get_or_404(doc_id)
+    load = LoadConfirmation.query.get(doc.load_id)
+    if not session.get('is_admin') and load.user_id != session['user_id']:
+        abort(403)
+    try:
+        url = get_r2().generate_presigned_url('get_object',
+              Params={'Bucket': R2_BUCKET, 'Key': doc.filename}, ExpiresIn=3600)
+        return redirect(url)
+    except Exception as e:
+        app.logger.error(f"R2 presign error: {e}")
+        flash('Could not generate download link.','error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/load/doc/<int:doc_id>/delete', methods=['POST'])
+@login_required
+def delete_load_doc(doc_id):
+    doc  = LoadDoc.query.get_or_404(doc_id)
+    load = LoadConfirmation.query.get(doc.load_id)
+    if not session.get('is_admin') and load.user_id != session['user_id']:
+        abort(403)
+    try:
+        get_r2().delete_object(Bucket=R2_BUCKET, Key=doc.filename)
+    except Exception as e:
+        app.logger.error(f"R2 delete error: {e}")
+    db.session.delete(doc)
+    db.session.commit()
+    flash('Document deleted.','success')
+    return redirect(url_for('dashboard'))
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
@@ -504,7 +578,6 @@ def review_load(load_id):
     routes = Route.query.order_by(Route.from_loc).all()
     if request.method == 'POST':
         action = request.form.get('action')
-        load.load_number  = request.form.get('load_number','').strip() or None
         load.commodity    = request.form.get('commodity','').strip()
         load.weight       = request.form.get('weight','').strip()
         load.trailer_type = request.form.get('trailer_type','').strip()

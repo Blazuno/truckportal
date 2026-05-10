@@ -18,14 +18,18 @@
     {% endif %}
   {% endwith %}
 
-  <form method="POST" action="{{ url_for('new_load') }}">
+  <form method="POST" action="{{ url_for('new_load') }}" enctype="multipart/form-data">
 
     <div class="card">
       <div class="card-title">Load Details</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1.25rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:1.25rem;">
         <div class="form-group" style="margin:0;">
           <label>Date</label>
           <input type="text" name="load_date" placeholder="05/10/26" required/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Load Number <span style="color:var(--dim);font-weight:400;">(optional)</span></label>
+          <input type="text" name="load_number"/>
         </div>
         <div class="form-group" style="margin:0;">
           <label>Commodity</label>
@@ -58,6 +62,19 @@
       <div id="preview-content"></div>
     </div>
 
+    <div class="card">
+      <div class="card-title">Attach Documents <span style="color:var(--dim);font-weight:400;font-size:0.85rem;">(optional)</span></div>
+      <p style="color:var(--dim);font-size:0.875rem;margin-bottom:1.25rem;">Upload any relevant docs — BOL, delivery receipts, etc. PDF, PNG, JPG accepted.</p>
+      <div class="upload-area" id="uploadArea">
+        <input type="file" name="load_docs[]" id="docInput" accept=".pdf,.png,.jpg,.jpeg" multiple/>
+        <div class="upload-icon">📎</div>
+        <div class="upload-text" id="uploadText">
+          <strong>Click to choose files</strong> or drag &amp; drop<br/>
+          PDF, PNG, JPG — multiple files allowed
+        </div>
+      </div>
+    </div>
+
     <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">Submit for Review</button>
     <a href="{{ url_for('dashboard') }}" class="btn btn-ghost" style="margin-left:0.75rem;">Cancel</a>
 
@@ -71,7 +88,7 @@ let legCount = 0;
 function routeOptions() {
   let html = '<option value="0">Select a route...</option>';
   routes.forEach(r => {
-    html += `<option value="${r.id}">${r.from_loc} to ${r.to_loc} (${r.shipper} - $${parseFloat(r.rate).toFixed(2)} + $${parseFloat(r.fuel_surcharge||0).toFixed(2)} fuel)</option>`;
+    html += `<option value="${r.id}">${r.from_loc} → ${r.to_loc} (${r.shipper} — $${parseFloat(r.rate).toFixed(2)} + $${parseFloat(r.fuel_surcharge||0).toFixed(2)} fuel)</option>`;
   });
   return html;
 }
@@ -125,6 +142,14 @@ function updatePreview() {
   </div></div>`;
   content.innerHTML = html;
 }
+
+// File input label
+document.getElementById('docInput').addEventListener('change', function() {
+  const text = document.getElementById('uploadText');
+  if (this.files.length) {
+    text.innerHTML = `<strong>${this.files.length} file(s) selected</strong><br/><span style="color:var(--green)">Ready to submit</span>`;
+  }
+});
 
 addLeg();
 </script>

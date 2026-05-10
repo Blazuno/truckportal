@@ -71,11 +71,36 @@
               </span>
             </td>
             <td>
-              {% if load.status == 'Confirmed' %}
-              <a class="btn btn-ghost btn-sm" href="{{ url_for('download_load', load_id=load.id) }}">↓ PDF</a>
-              {% else %}
-              <span style="color:var(--dim);font-size:0.85rem;">Awaiting review</span>
-              {% endif %}
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                {% if load.status == 'Confirmed' %}
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('download_load', load_id=load.id) }}">↓ PDF</a>
+                {% else %}
+                <span style="color:var(--dim);font-size:0.85rem;">Awaiting review</span>
+                {% endif %}
+                <button type="button" class="btn btn-ghost btn-sm"
+                  onclick="toggleDocs({{ load.id }})">📎 Docs ({{ load.docs|length }})</button>
+              </div>
+              <!-- Inline docs panel -->
+              <div id="docs-{{ load.id }}" style="display:none;margin-top:0.75rem;background:var(--coal);border:1px solid var(--border);border-radius:6px;padding:0.75rem;">
+                {% if load.docs %}
+                  {% for doc in load.docs %}
+                  <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">
+                    <span style="flex:1;font-size:0.85rem;color:var(--text);">{{ doc.original }}</span>
+                    <a class="btn btn-ghost btn-sm" href="{{ url_for('download_load_doc', doc_id=doc.id) }}">↓</a>
+                    <form method="POST" action="{{ url_for('delete_load_doc', doc_id=doc.id) }}" style="display:inline;">
+                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this doc?')">✕</button>
+                    </form>
+                  </div>
+                  {% endfor %}
+                {% else %}
+                  <p style="color:var(--dim);font-size:0.85rem;margin-bottom:0.5rem;">No docs attached yet.</p>
+                {% endif %}
+                <form method="POST" action="{{ url_for('upload_load_doc', load_id=load.id) }}" enctype="multipart/form-data" style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;">
+                  <input type="file" name="load_docs[]" multiple accept=".pdf,.png,.jpg,.jpeg"
+                    style="font-size:0.8rem;color:var(--dim);flex:1;"/>
+                  <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+                </form>
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -141,5 +166,11 @@
       text.innerHTML = `<strong>${input.files[0].name}</strong><br/><span style="color:var(--green)">Ready to submit</span>`;
     }
   });
+</script>
+<script>
+function toggleDocs(id) {
+  const el = document.getElementById('docs-' + id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
 </script>
 {% endblock %}
