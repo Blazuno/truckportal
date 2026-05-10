@@ -409,8 +409,11 @@
   <ul class="nav-links">
     {% if session.is_admin %}
       <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+      <li><a href="{{ url_for('manage_routes') }}">Routes</a></li>
     {% else %}
       <li><a href="{{ url_for('dashboard') }}">My Invoices</a></li>
+      <li><a href="{{ url_for('new_load') }}">New Load</a></li>
+      <li><a href="{{ url_for('profile') }}">Profile</a></li>
     {% endif %}
   </ul>
   <div style="display:flex;align-items:center;gap:1rem;">

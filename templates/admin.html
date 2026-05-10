@@ -48,6 +48,59 @@
     </div>
   </div>
 
+
+  <!-- Load Confirmations Queue -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+      <div class="card-title" style="margin:0;">Load Confirmations</div>
+      <a href="{{ url_for('manage_routes') }}" class="btn btn-ghost btn-sm">Manage Routes</a>
+    </div>
+    {% if loads %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Contractor</th>
+            <th>Submitted</th>
+            <th>Pickup Date</th>
+            <th>Commodity</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for load in loads %}
+          <tr>
+            <td style="color:var(--amber);font-weight:600;">{{ load.order_number }}</td>
+            <td>
+              <strong style="color:var(--bright);">{{ load.contractor.name }}</strong><br/>
+              <span style="font-size:0.8rem;color:var(--dim);">{{ load.contractor.business_name or '—' }}</span>
+            </td>
+            <td style="color:var(--dim);">{{ load.created.strftime('%b %d, %Y') }}</td>
+            <td>{{ load.pickup_date }}</td>
+            <td>{{ load.commodity }}</td>
+            <td>
+              <span class="badge {% if load.status == 'Confirmed' %}badge-paid{% else %}badge-pending{% endif %}">
+                {{ load.status }}
+              </span>
+            </td>
+            <td>
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('review_load', load_id=load.id) }}">Review</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon">📋</div>
+      <p>No load confirmations submitted yet.</p>
+    </div>
+    {% endif %}
+  </div>
+
   <!-- Invoice Table -->
   <div class="card">
     <div class="card-title">All Invoices</div>

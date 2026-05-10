@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}New Load Confirmation — Viveck Aryan Transport{% endblock %}
+
+{% block body %}
+<div class="container">
+  <div class="page-header">
+    <div class="page-title">New Load Confirmation</div>
+    <div class="page-subtitle">Fill in the load details. Your dad will review and confirm.</div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="alerts">
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('new_load') }}">
+
+    <!-- Load Details -->
+    <div class="card">
+      <div class="card-title">Load Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+        <div class="form-group" style="margin:0;">
+          <label>Pickup Date</label>
+          <input type="text" name="pickup_date" placeholder="MM/DD/YY" required/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Trailer Type</label>
+          <input type="text" name="trailer_type" placeholder="e.g. Dry Van, Reefer"/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Commodity</label>
+          <input type="text" name="commodity" placeholder="e.g. dry 24 Skids" required/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Weight</label>
+          <input type="text" name="weight" placeholder="e.g. 10000lbs" required/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stops -->
+    <div class="card">
+      <div class="card-title">Pickup &amp; Drops</div>
+      <div id="stops-container">
+        <!-- Stop template rendered by JS -->
+      </div>
+      <button type="button" class="btn btn-ghost" onclick="addStop()" style="margin-top:0.75rem;">
+        + Add Drop
+      </button>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">
+      Submit for Review
+    </button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost" style="margin-left:0.75rem;">Cancel</a>
+
+  </form>
+</div>
+
+<script>
+const routes = {{ routes | tojson }};
+
+// Build route options HTML
+function routeOptions(selectedId) {
+  let html = '<option value="0">— Select route (optional) —</option>';
+  routes.forEach(r => {
+    const sel = selectedId == r.id ? 'selected' : '';
+    html += `<option value="${r.id}" ${sel}>${r.from_loc} → ${r.to_loc} ($${parseFloat(r.rate).toFixed(2)} + $${parseFloat(r.fuel_surcharge||0).toFixed(2)} fuel)</option>`;
+  });
+  return html;
+}
+
+let stopCount = 0;
+
+function addStop(label, isPickup) {
+  stopCount++;
+  const div = document.createElement('div');
+  div.className = 'stop-row';
+  div.style.cssText = 'background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:0.75rem;';
+  const title = isPickup ? '📍 Pickup' : `🚚 Drop ${stopCount - 1}`;
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.9rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber);">${title}</span>
+      ${!isPickup ? `<button type="button" onclick="this.closest('.stop-row').remove()" style="background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:1.2rem;">✕</button>` : ''}
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0.75rem;">
+      <div>
+        <label style="display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:0.4rem;">Location / Address</label>
+        <input type="text" name="drop_location[]" placeholder="${isPickup ? 'Pickup address' : 'Delivery address'}" required style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;"/>
+      </div>
+      <div>
+        <label style="display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:0.4rem;">${isPickup ? 'Shipper Name' : 'Contact Name'}</label>
+        <input type="text" name="drop_contact[]" placeholder="e.g. Amazon" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;"/>
+      </div>
+      <div>
+        <label style="display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:0.4rem;">Date</label>
+        <input type="text" name="drop_date[]" placeholder="MM/DD/YY" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;"/>
+      </div>
+    </div>
+    ${!isPickup ? `
+    <div style="margin-top:0.75rem;">
+      <label style="display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:0.4rem;">Route &amp; Rate</label>
+      <select name="drop_route_id[]" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;">
+        ${routeOptions(null)}
+      </select>
+    </div>` : `<input type="hidden" name="drop_route_id[]" value="0"/>`}
+  `;
+  document.getElementById('stops-container').appendChild(div);
+}
+
+// Init with pickup stop
+addStop('Pickup', true);
+</script>
+{% endblock %}
