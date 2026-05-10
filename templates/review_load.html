@@ -25,12 +25,12 @@
 
   <form method="POST" action="{{ url_for('review_load', load_id=load.id) }}">
 
-    <!-- Carrier Info (read-only) -->
+    <!-- Carrier (read-only) -->
     <div class="card">
       <div class="card-title">Carrier</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
         <div>
-          <div style="font-size:0.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Name</div>
+          <div style="font-size:0.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Business Name</div>
           <div style="color:var(--bright);">{{ load.contractor.business_name or load.contractor.name }}</div>
         </div>
         <div>
@@ -47,10 +47,10 @@
     <!-- Load Details -->
     <div class="card">
       <div class="card-title">Load Details</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1.25rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:1.25rem;">
         <div class="form-group" style="margin:0;">
-          <label>Pickup Date</label>
-          <input type="text" name="pickup_date" value="{{ load.pickup_date }}"/>
+          <label>Date</label>
+          <input type="text" name="load_date" value="{{ load.load_date }}"/>
         </div>
         <div class="form-group" style="margin:0;">
           <label>Commodity</label>
@@ -64,64 +64,42 @@
           <label>Trailer Type</label>
           <input type="text" name="trailer_type" value="{{ load.trailer_type or '' }}"/>
         </div>
-      </div>
-      <div class="form-group" style="margin-top:1.25rem;max-width:300px;">
-        <label>VRID <span style="color:var(--dim);font-weight:400;">(optional)</span></label>
-        <input type="text" name="vrid" value="{{ load.vrid or '' }}" placeholder="e.g. 116MKMW3T"/>
+        <div class="form-group" style="margin:0;">
+          <label>Load Number <span style="color:var(--dim);font-weight:400;">(optional)</span></label>
+          <input type="text" name="load_number" value="{{ load.load_number or '' }}"/>
+        </div>
       </div>
     </div>
 
-    <!-- Drops -->
+    <!-- Route Legs (read-only) -->
     <div class="card">
-      <div class="card-title">Stops</div>
-      {% for drop in load.drops %}
-      <div style="background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:0.75rem;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber);margin-bottom:0.75rem;">
-          {{ '📍 Pickup' if drop.position == 1 else '🚚 Drop ' ~ (drop.position - 1) }}
-          <span style="color:var(--dim);margin-left:0.5rem;">{{ drop.location }}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:0.75rem;">
-          <div class="form-group" style="margin:0;">
-            <label>Contact / Shipper</label>
-            <input type="text" name="drop_contact_{{ drop.id }}" value="{{ drop.contact_name or '' }}"/>
-          </div>
-          <div class="form-group" style="margin:0;">
-            <label>Date</label>
-            <input type="text" name="drop_date_{{ drop.id }}" value="{{ drop.drop_date or '' }}"/>
-          </div>
-          {% if drop.position > 1 %}
-          <div class="form-group" style="margin:0;">
-            <label>Route &amp; Rate</label>
-            <select name="drop_route_{{ drop.id }}" style="width:100%;background:var(--dark);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;">
-              <option value="0">— Not assigned —</option>
-              {% for r in routes %}
-              <option value="{{ r.id }}" {% if drop.route_id == r.id %}selected{% endif %}>
-                {{ r.from_loc }} → {{ r.to_loc }} (${{ "%.2f"|format(r.rate|float) }} + ${{ "%.2f"|format(r.fuel_surcharge|float) }} fuel)
-              </option>
-              {% endfor %}
-            </select>
-          </div>
-          {% else %}
-          <input type="hidden" name="drop_route_{{ drop.id }}" value="0"/>
-          {% endif %}
-        </div>
+      <div class="card-title">Route Legs</div>
+      {% set total_rate = namespace(val=0) %}
+      {% set total_fuel = namespace(val=0) %}
+      {% for leg in load.legs %}
+        {% set total_rate.val = total_rate.val + leg.route.rate|float %}
+        {% set total_fuel.val = total_fuel.val + leg.route.fuel_surcharge|float %}
+      <div style="display:flex;align-items:center;gap:1rem;padding:0.75rem 1rem;background:var(--dark);border:1px solid var(--border);border-radius:6px;margin-bottom:0.5rem;">
+        <span style="color:var(--amber);font-weight:700;font-family:'Barlow Condensed',sans-serif;min-width:55px;">Leg {{ leg.position }}</span>
+        <span style="flex:1;color:var(--bright);">{{ leg.route.from_loc }} → {{ leg.route.to_loc }}</span>
+        <span style="color:var(--dim);font-size:0.85rem;">{{ leg.route.shipper }}</span>
+        <span style="color:var(--green);font-weight:600;">${{ "%.2f"|format((leg.route.rate|float) + (leg.route.fuel_surcharge|float)) }}</span>
       </div>
       {% endfor %}
+      <div style="text-align:right;padding:0.5rem 1rem;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;">
+        TOTAL: <span style="color:var(--amber);">${{ "%.2f"|format(total_rate.val + total_fuel.val) }}</span>
+      </div>
     </div>
 
     <!-- Actions -->
-    <div style="display:flex;gap:1rem;margin-top:0.5rem;">
-      <button type="submit" name="action" value="update" class="btn btn-ghost">
-        Save Changes
-      </button>
+    <div style="display:flex;gap:1rem;margin-top:0.5rem;align-items:center;">
+      <button type="submit" name="action" value="update" class="btn btn-ghost">Save Changes</button>
       <button type="submit" name="action" value="confirm" class="btn btn-primary"
               onclick="return confirm('Confirm this load and generate the PDF?')">
         ✓ Confirm &amp; Generate PDF
       </button>
       <form method="POST" action="{{ url_for('delete_load', load_id=load.id) }}" style="margin-left:auto;">
-        <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this load confirmation?')">
-          Delete
-        </button>
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this load?')">Delete</button>
       </form>
     </div>
 

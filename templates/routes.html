@@ -8,7 +8,7 @@
       <a href="{{ url_for('admin_dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
       <div>
         <div class="page-title">Route List</div>
-        <div class="page-subtitle">Manage from/to locations and rates for load confirmations</div>
+        <div class="page-subtitle">Fixed routes with addresses, shippers, and rates</div>
       </div>
     </div>
   </div>
@@ -23,33 +23,35 @@
     {% endif %}
   {% endwith %}
 
-  <!-- Add Route -->
   <div class="card">
     <div class="card-title">Add New Route</div>
     <form method="POST" action="{{ url_for('add_route') }}">
-      <div style="display:grid;grid-template-columns:2fr 2fr 1fr 1fr auto;gap:1rem;align-items:end;">
+      <div style="display:grid;grid-template-columns:2fr 2fr 1.5fr 1fr 1fr auto;gap:1rem;align-items:end;">
         <div class="form-group" style="margin:0;">
-          <label>From</label>
-          <input type="text" name="from_loc" placeholder="e.g. Scarborough, ON" required/>
+          <label>From (full address)</label>
+          <input type="text" name="from_loc" required/>
         </div>
         <div class="form-group" style="margin:0;">
-          <label>To</label>
-          <input type="text" name="to_loc" placeholder="e.g. Waterford, ON" required/>
+          <label>To (full address)</label>
+          <input type="text" name="to_loc" required/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Shipper</label>
+          <input type="text" name="shipper" required/>
         </div>
         <div class="form-group" style="margin:0;">
           <label>Rate ($)</label>
-          <input type="number" name="rate" step="0.01" min="0" placeholder="450.00" required/>
+          <input type="number" name="rate" step="0.01" min="0" required/>
         </div>
         <div class="form-group" style="margin:0;">
-          <label>Fuel Surcharge ($)</label>
-          <input type="number" name="fuel_surcharge" step="0.01" min="0" placeholder="50.00"/>
+          <label>Fuel ($)</label>
+          <input type="number" name="fuel_surcharge" step="0.01" min="0" placeholder="0"/>
         </div>
         <button type="submit" class="btn btn-primary" style="height:44px;">Add</button>
       </div>
     </form>
   </div>
 
-  <!-- Route Table -->
   <div class="card">
     <div class="card-title">All Routes ({{ routes|length }})</div>
     {% if routes %}
@@ -59,8 +61,9 @@
           <tr>
             <th>From</th>
             <th>To</th>
+            <th>Shipper</th>
             <th>Rate</th>
-            <th>Fuel Surcharge</th>
+            <th>Fuel</th>
             <th>Total</th>
             <th></th>
           </tr>
@@ -70,6 +73,7 @@
           <tr>
             <td style="color:var(--bright);">{{ r.from_loc }}</td>
             <td style="color:var(--bright);">{{ r.to_loc }}</td>
+            <td style="color:var(--dim);">{{ r.shipper }}</td>
             <td>${{ "%.2f"|format(r.rate|float) }}</td>
             <td>${{ "%.2f"|format(r.fuel_surcharge|float) }}</td>
             <td style="color:var(--green);font-weight:600;">${{ "%.2f"|format((r.rate|float) + (r.fuel_surcharge|float)) }}</td>
@@ -87,7 +91,7 @@
     {% else %}
     <div class="empty">
       <div class="empty-icon">🗺️</div>
-      <p>No routes added yet. Add your first one above.</p>
+      <p>No routes added yet.</p>
     </div>
     {% endif %}
   </div>

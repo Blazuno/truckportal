@@ -52,7 +52,7 @@ class User(db.Model):
     business_name    = db.Column(db.String(200))
     business_address = db.Column(db.String(300))
     phone            = db.Column(db.String(50))
-    invoices         = db.relationship('Invoice', backref='submitter', lazy=True)
+    invoices           = db.relationship('Invoice', backref='submitter', lazy=True)
     load_confirmations = db.relationship('LoadConfirmation', backref='contractor', lazy=True)
 
 class Invoice(db.Model):
@@ -65,8 +65,9 @@ class Invoice(db.Model):
 
 class Route(db.Model):
     id             = db.Column(db.Integer, primary_key=True)
-    from_loc       = db.Column(db.String(200), nullable=False)
-    to_loc         = db.Column(db.String(200), nullable=False)
+    from_loc       = db.Column(db.String(200), nullable=False)  # full address
+    to_loc         = db.Column(db.String(200), nullable=False)  # full address
+    shipper        = db.Column(db.String(200), nullable=False)  # shipper name at pickup
     rate           = db.Column(db.Numeric(10, 2), nullable=False)
     fuel_surcharge = db.Column(db.Numeric(10, 2), default=0)
     created        = db.Column(db.DateTime, default=datetime.utcnow)
@@ -75,27 +76,25 @@ class LoadConfirmation(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     order_number = db.Column(db.String(20), unique=True, nullable=False)
     user_id      = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    pickup_date  = db.Column(db.String(20), nullable=False)
+    load_date    = db.Column(db.String(20), nullable=False)
     commodity    = db.Column(db.String(200), nullable=False)
     weight       = db.Column(db.String(100), nullable=False)
     trailer_type = db.Column(db.String(100))
-    vrid         = db.Column(db.String(100))
+    load_number  = db.Column(db.String(100))   # formerly vrid
     status       = db.Column(db.String(50), default='Pending')
     r2_key       = db.Column(db.String(255))
     created      = db.Column(db.DateTime, default=datetime.utcnow)
-    drops        = db.relationship('LoadDrop', backref='load', lazy=True,
+    legs         = db.relationship('LoadLeg', backref='load', lazy=True,
                                    cascade='all, delete-orphan',
-                                   order_by='LoadDrop.position')
+                                   order_by='LoadLeg.position')
 
-class LoadDrop(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    load_id      = db.Column(db.Integer, db.ForeignKey('load_confirmation.id'), nullable=False)
-    position     = db.Column(db.Integer, nullable=False)
-    location     = db.Column(db.String(200), nullable=False)
-    contact_name = db.Column(db.String(200))
-    drop_date    = db.Column(db.String(20))
-    route_id     = db.Column(db.Integer, db.ForeignKey('route.id'))
-    route        = db.relationship('Route')
+class LoadLeg(db.Model):
+    """One route leg within a load confirmation."""
+    id       = db.Column(db.Integer, primary_key=True)
+    load_id  = db.Column(db.Integer, db.ForeignKey('load_confirmation.id'), nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    route_id = db.Column(db.Integer, db.ForeignKey('route.id'), nullable=False)
+    route    = db.relationship('Route')
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -137,7 +136,7 @@ SPECIAL_INSTRUCTIONS = [
     "Re-brokering, assigning or interlining of this shipment will void our obligation to pay your freight.",
 ]
 
-def build_load_confirmation_pdf(load):
+def build_pdf(load):
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter,
                             leftMargin=0.6*inch, rightMargin=0.6*inch,
@@ -151,10 +150,10 @@ def build_load_confirmation_pdf(load):
     contractor = load.contractor
     story = []
 
+    # Header
     story.append(Paragraph("LOAD CONFIRMATION &amp; RATE AGREEMENT", center))
     story.append(Spacer(1, 6))
-
-    hdr = Table([[Paragraph(f"<b>DATE:</b> {load.pickup_date}", normal),
+    hdr = Table([[Paragraph(f"<b>DATE:</b> {load.load_date}", normal),
                   Paragraph(f"<b>ORDER:</b> {load.order_number}", normal)]],
                 colWidths=[3.5*inch, 3.5*inch])
     hdr.setStyle(TableStyle([('ALIGN', (1,0), (1,0), 'RIGHT')]))
@@ -163,6 +162,7 @@ def build_load_confirmation_pdf(load):
     story.append(HRFlowable(width="100%", thickness=1.5, color=colors.black))
     story.append(Spacer(1, 6))
 
+    # Company + carrier
     info = Table([[
         Paragraph("<b>Viveck Aryan Transport Inc.</b><br/>"
                   "50 Wright Cres, Niagara on the Lake, ON, L0S-1J0<br/>"
@@ -178,6 +178,7 @@ def build_load_confirmation_pdf(load):
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Spacer(1, 6))
 
+    # Special instructions
     story.append(Paragraph("<b>Special Instructions:</b>", bold))
     story.append(Spacer(1, 3))
     for inst in SPECIAL_INSTRUCTIONS:
@@ -186,57 +187,61 @@ def build_load_confirmation_pdf(load):
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Spacer(1, 6))
 
+    # Load info header
     story.append(Paragraph("<b>LOAD INFORMATION</b>", bold))
     story.append(Spacer(1, 4))
 
-    pickup = load.drops[0] if load.drops else None
-    load_rows = [
-        [Paragraph("<b>Pickup Location</b>", small), Paragraph("<b>Shipper</b>", small),
-         Paragraph("<b>Date</b>", small), Paragraph("<b>Commodity</b>", small),
-         Paragraph("<b>Weight</b>", small), Paragraph("<b>Trailer</b>", small)],
-        [Paragraph(pickup.location if pickup else '', small),
-         Paragraph(pickup.contact_name or '' if pickup else '', small),
-         Paragraph(pickup.drop_date or load.pickup_date if pickup else '', small),
-         Paragraph(load.commodity, small), Paragraph(load.weight, small),
-         Paragraph(load.trailer_type or '', small)],
+    # Commodity / weight / trailer row
+    meta_rows = [
+        [Paragraph("<b>Commodity</b>", small), Paragraph("<b>Weight</b>", small), Paragraph("<b>Trailer</b>", small)],
+        [Paragraph(load.commodity, small), Paragraph(load.weight, small), Paragraph(load.trailer_type or '', small)],
     ]
-    lt = Table(load_rows, colWidths=[1.4*inch,1.2*inch,0.9*inch,1.2*inch,0.9*inch,0.9*inch])
-    lt.setStyle(TableStyle([
+    mt = Table(meta_rows, colWidths=[2.33*inch, 2.33*inch, 2.33*inch])
+    mt.setStyle(TableStyle([
         ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f0f0f0')),
         ('GRID',(0,0),(-1,-1),0.5,colors.grey),
         ('FONTSIZE',(0,0),(-1,-1),8),
         ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
         ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
     ]))
-    story.append(lt)
-    story.append(Spacer(1, 6))
+    story.append(mt)
+    story.append(Spacer(1, 8))
 
-    for i, drop in enumerate(load.drops[1:]):
-        drop_rows = [
-            [Paragraph(f"<b>Drop {i+1}</b>", small), Paragraph("<b>Contact</b>", small),
-             Paragraph("<b>Date</b>", small), Paragraph("<b>Rate</b>", small),
-             Paragraph("<b>Fuel</b>", small), Paragraph("", small)],
-            [Paragraph(drop.location, small), Paragraph(drop.contact_name or '', small),
-             Paragraph(drop.drop_date or '', small),
-             Paragraph(f"${drop.route.rate:.2f}" if drop.route else '', small),
-             Paragraph(f"${drop.route.fuel_surcharge:.2f}" if drop.route else '$0.00', small),
-             Paragraph("", small)],
+    # Route legs
+    for i, leg in enumerate(load.legs):
+        r = leg.route
+        label = "Pickup" if i == 0 else f"Drop {i} / Re-Pickup"
+        leg_rows = [
+            [Paragraph(f"<b>{label}</b>", small),
+             Paragraph("<b>Shipper</b>", small),
+             Paragraph("<b>From</b>", small),
+             Paragraph("<b>To</b>", small),
+             Paragraph("<b>Rate</b>", small),
+             Paragraph("<b>Fuel</b>", small)],
+            [Paragraph(load.load_date, small),
+             Paragraph(r.shipper, small),
+             Paragraph(r.from_loc, small),
+             Paragraph(r.to_loc, small),
+             Paragraph(f"${float(r.rate):.2f}", small),
+             Paragraph(f"${float(r.fuel_surcharge):.2f}", small)],
         ]
-        dt = Table(drop_rows, colWidths=[1.4*inch,1.2*inch,0.9*inch,1.2*inch,0.9*inch,0.9*inch])
-        dt.setStyle(TableStyle([
+        lt = Table(leg_rows, colWidths=[0.8*inch,1.1*inch,1.6*inch,1.6*inch,0.85*inch,0.85*inch])
+        lt.setStyle(TableStyle([
             ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f0f0f0')),
             ('GRID',(0,0),(-1,-1),0.5,colors.grey),
             ('FONTSIZE',(0,0),(-1,-1),8),
             ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
             ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
         ]))
-        story.append(dt)
+        story.append(lt)
         story.append(Spacer(1, 4))
 
-    total_rate = sum(float(d.route.rate) for d in load.drops if d.route and d.route.rate)
-    total_fuel = sum(float(d.route.fuel_surcharge) for d in load.drops if d.route and d.route.fuel_surcharge)
-    total      = total_rate + total_fuel
+    story.append(Spacer(1, 4))
 
+    # Rate summary
+    total_rate = sum(float(leg.route.rate) for leg in load.legs)
+    total_fuel = sum(float(leg.route.fuel_surcharge) for leg in load.legs)
+    total      = total_rate + total_fuel
     rt = Table([[Paragraph("<b>Agreed Rate</b>", bold),
                  Paragraph(f"${total_rate:.2f} + ${total_fuel:.2f} fuel surcharge", normal),
                  Paragraph(f"<b>TOTAL: ${total:.2f}</b>", bold)]],
@@ -251,8 +256,8 @@ def build_load_confirmation_pdf(load):
     story.append(rt)
     story.append(Spacer(1, 6))
 
-    vrid_text = f"  <b>VRID:</b> {load.vrid}" if load.vrid else ""
-    story.append(Paragraph(f"To be paid 30 days from receipt of invoice.{vrid_text}", small))
+    ln_text = f"  <b>Load #:</b> {load.load_number}" if load.load_number else ""
+    story.append(Paragraph(f"To be paid 30 days from receipt of invoice.{ln_text}", small))
     story.append(Spacer(1, 4))
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Spacer(1, 6))
@@ -263,22 +268,22 @@ def build_load_confirmation_pdf(load):
         "THIS AGREEMENT MUST BE SIGNED AND EMAILED TO viveck.aryan.trans@gmail.com", small))
     story.append(Spacer(1, 10))
 
+    # Signature — carrier only
     sig = Table([
-        [Paragraph("<b>Accepted by: Viveck Aryan Transport Inc.</b>", small),
-         Paragraph(f"<b>CARRIER: {contractor.business_name or contractor.name}</b>", small)],
-        [Spacer(1,30), Spacer(1,30)],
-        [Paragraph("NAME: ___________________________", small), Paragraph("NAME: ___________________________", small)],
-        [Paragraph("TITLE: __________________________", small), Paragraph("TITLE: __________________________", small)],
-        [Paragraph("SIGNATURE: ______________________", small), Paragraph("SIGNATURE: ______________________", small)],
-    ], colWidths=[3.5*inch, 3.5*inch])
+        [Paragraph(f"<b>CARRIER: {contractor.business_name or contractor.name}</b>", small)],
+        [Spacer(1, 30)],
+        [Paragraph("NAME: ___________________________", small)],
+        [Paragraph("TITLE: __________________________", small)],
+        [Paragraph("SIGNATURE: ______________________", small)],
+    ], colWidths=[7*inch])
     sig.setStyle(TableStyle([
         ('BOX',(0,0),(-1,-1),0.5,colors.grey),
-        ('INNERGRID',(0,0),(-1,-1),0.5,colors.lightgrey),
         ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
         ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
         ('LEFTPADDING',(0,0),(-1,-1),8),
     ]))
     story.append(sig)
+
     doc.build(story)
     buf.seek(0)
     return buf
@@ -389,37 +394,32 @@ def new_load():
         flash('Please complete your business profile before creating a load confirmation.','error')
         return redirect(url_for('profile'))
     routes = Route.query.order_by(Route.from_loc).all()
+    if not routes:
+        flash('No routes have been set up yet. Please contact the admin.','error')
+        return redirect(url_for('dashboard'))
     if request.method == 'POST':
-        pickup_date  = request.form.get('pickup_date','').strip()
+        load_date    = request.form.get('load_date','').strip()
         commodity    = request.form.get('commodity','').strip()
         weight       = request.form.get('weight','').strip()
         trailer_type = request.form.get('trailer_type','').strip()
-        if not pickup_date or not commodity or not weight:
-            flash('Pickup date, commodity and weight are required.','error')
+        route_ids    = request.form.getlist('route_id[]')
+        route_ids    = [r for r in route_ids if r and r != '0']
+        if not load_date or not commodity or not weight:
+            flash('Date, commodity and weight are required.','error')
             return render_template('new_load.html', routes=routes)
-        locations = request.form.getlist('drop_location[]')
-        contacts  = request.form.getlist('drop_contact[]')
-        dates     = request.form.getlist('drop_date[]')
-        route_ids = request.form.getlist('drop_route_id[]')
-        if not locations or not locations[0]:
-            flash('At least one pickup location is required.','error')
+        if not route_ids:
+            flash('Please add at least one route leg.','error')
             return render_template('new_load.html', routes=routes)
         load = LoadConfirmation(
             order_number=generate_order_number(), user_id=session['user_id'],
-            pickup_date=pickup_date, commodity=commodity,
+            load_date=load_date, commodity=commodity,
             weight=weight, trailer_type=trailer_type)
         db.session.add(load)
         db.session.flush()
-        for i, loc in enumerate(locations):
-            if not loc.strip(): continue
-            rid = route_ids[i] if i < len(route_ids) else None
-            db.session.add(LoadDrop(
-                load_id=load.id, position=i+1, location=loc.strip(),
-                contact_name=contacts[i].strip() if i < len(contacts) else '',
-                drop_date=dates[i].strip() if i < len(dates) else '',
-                route_id=int(rid) if rid and rid != '0' else None))
+        for i, rid in enumerate(route_ids):
+            db.session.add(LoadLeg(load_id=load.id, position=i+1, route_id=int(rid)))
         db.session.commit()
-        flash(f'Load confirmation {load.order_number} submitted for review.','success')
+        flash(f'Load {load.order_number} submitted for review.','success')
         return redirect(url_for('dashboard'))
     return render_template('new_load.html', routes=routes)
 
@@ -430,7 +430,7 @@ def download_load(load_id):
     if not session.get('is_admin') and load.user_id != session['user_id']:
         abort(403)
     if load.status != 'Confirmed' or not load.r2_key:
-        flash('This load confirmation has not been confirmed yet.','error')
+        flash('This load has not been confirmed yet.','error')
         return redirect(url_for('dashboard'))
     try:
         url = get_r2().generate_presigned_url('get_object',
@@ -498,20 +498,15 @@ def review_load(load_id):
     routes = Route.query.order_by(Route.from_loc).all()
     if request.method == 'POST':
         action = request.form.get('action')
-        load.vrid         = request.form.get('vrid','').strip() or None
+        load.load_number  = request.form.get('load_number','').strip() or None
         load.commodity    = request.form.get('commodity','').strip()
         load.weight       = request.form.get('weight','').strip()
         load.trailer_type = request.form.get('trailer_type','').strip()
-        load.pickup_date  = request.form.get('pickup_date','').strip()
-        for drop in load.drops:
-            rid = request.form.get(f'drop_route_{drop.id}')
-            drop.route_id     = int(rid) if rid and rid != '0' else None
-            drop.contact_name = request.form.get(f'drop_contact_{drop.id}','').strip()
-            drop.drop_date    = request.form.get(f'drop_date_{drop.id}','').strip()
+        load.load_date    = request.form.get('load_date','').strip()
         db.session.commit()
         if action == 'confirm':
             try:
-                pdf_buf = build_load_confirmation_pdf(load)
+                pdf_buf = build_pdf(load)
                 r2_key  = f"load_confirmations/{load.order_number}.pdf"
                 get_r2().upload_fileobj(pdf_buf, R2_BUCKET, r2_key)
                 load.r2_key = r2_key
@@ -552,12 +547,13 @@ def manage_routes():
 def add_route():
     from_loc = request.form.get('from_loc','').strip()
     to_loc   = request.form.get('to_loc','').strip()
+    shipper  = request.form.get('shipper','').strip()
     rate     = request.form.get('rate','').strip()
     fuel     = request.form.get('fuel_surcharge','0').strip()
-    if not from_loc or not to_loc or not rate:
-        flash('From, To, and Rate are required.','error')
+    if not from_loc or not to_loc or not shipper or not rate:
+        flash('All route fields are required.','error')
         return redirect(url_for('manage_routes'))
-    db.session.add(Route(from_loc=from_loc, to_loc=to_loc,
+    db.session.add(Route(from_loc=from_loc, to_loc=to_loc, shipper=shipper,
                          rate=float(rate), fuel_surcharge=float(fuel or 0)))
     db.session.commit()
     flash('Route added.','success')

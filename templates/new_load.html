@@ -5,7 +5,7 @@
 <div class="container">
   <div class="page-header">
     <div class="page-title">New Load Confirmation</div>
-    <div class="page-subtitle">Fill in the load details. Your dad will review and confirm.</div>
+    <div class="page-subtitle">Select your routes and enter load details. Your dad will review and confirm.</div>
   </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -20,43 +20,45 @@
 
   <form method="POST" action="{{ url_for('new_load') }}">
 
-    <!-- Load Details -->
     <div class="card">
       <div class="card-title">Load Details</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1.25rem;">
         <div class="form-group" style="margin:0;">
-          <label>Pickup Date</label>
-          <input type="text" name="pickup_date" placeholder="MM/DD/YY" required/>
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label>Trailer Type</label>
-          <input type="text" name="trailer_type" placeholder="e.g. Dry Van, Reefer"/>
+          <label>Date</label>
+          <input type="text" name="load_date" placeholder="05/10/26" required/>
         </div>
         <div class="form-group" style="margin:0;">
           <label>Commodity</label>
-          <input type="text" name="commodity" placeholder="e.g. dry 24 Skids" required/>
+          <input type="text" name="commodity" required/>
         </div>
         <div class="form-group" style="margin:0;">
           <label>Weight</label>
-          <input type="text" name="weight" placeholder="e.g. 10000lbs" required/>
+          <input type="text" name="weight" required/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Trailer Type</label>
+          <input type="text" name="trailer_type"/>
         </div>
       </div>
     </div>
 
-    <!-- Stops -->
     <div class="card">
-      <div class="card-title">Pickup &amp; Drops</div>
-      <div id="stops-container">
-        <!-- Stop template rendered by JS -->
-      </div>
-      <button type="button" class="btn btn-ghost" onclick="addStop()" style="margin-top:0.75rem;">
-        + Add Drop
+      <div class="card-title">Route Legs</div>
+      <p style="color:var(--dim);font-size:0.875rem;margin-bottom:1.25rem;">
+        Add each leg in order. If you re-pickup after a drop, add another leg.
+      </p>
+      <div id="legs-container"></div>
+      <button type="button" class="btn btn-ghost" onclick="addLeg()" style="margin-top:0.5rem;">
+        + Add Route Leg
       </button>
     </div>
 
-    <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">
-      Submit for Review
-    </button>
+    <div class="card" id="preview-card" style="display:none;">
+      <div class="card-title">Route Summary</div>
+      <div id="preview-content"></div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">Submit for Review</button>
     <a href="{{ url_for('dashboard') }}" class="btn btn-ghost" style="margin-left:0.75rem;">Cancel</a>
 
   </form>
@@ -64,56 +66,66 @@
 
 <script>
 const routes = {{ routes | tojson }};
+let legCount = 0;
 
-// Build route options HTML
-function routeOptions(selectedId) {
-  let html = '<option value="0">— Select route (optional) —</option>';
+function routeOptions() {
+  let html = '<option value="0">Select a route...</option>';
   routes.forEach(r => {
-    const sel = selectedId == r.id ? 'selected' : '';
-    html += `<option value="${r.id}" ${sel}>${r.from_loc} → ${r.to_loc} ($${parseFloat(r.rate).toFixed(2)} + $${parseFloat(r.fuel_surcharge||0).toFixed(2)} fuel)</option>`;
+    html += `<option value="${r.id}">${r.from_loc} to ${r.to_loc} (${r.shipper} - $${parseFloat(r.rate).toFixed(2)} + $${parseFloat(r.fuel_surcharge||0).toFixed(2)} fuel)</option>`;
   });
   return html;
 }
 
-let stopCount = 0;
-
-function addStop(label, isPickup) {
-  stopCount++;
+function addLeg() {
+  legCount++;
   const div = document.createElement('div');
-  div.className = 'stop-row';
-  div.style.cssText = 'background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:0.75rem;';
-  const title = isPickup ? '📍 Pickup' : `🚚 Drop ${stopCount - 1}`;
+  div.className = 'leg-row';
+  div.style.cssText = 'display:flex;align-items:center;gap:1rem;background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:0.75rem;';
   div.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.9rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber);">${title}</span>
-      ${!isPickup ? `<button type="button" onclick="this.closest('.stop-row').remove()" style="background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:1.2rem;">✕</button>` : ''}
-    </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0.75rem;">
-      <div>
-        <label style="display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:0.4rem;">Location / Address</label>
-        <input type="text" name="drop_location[]" placeholder="${isPickup ? 'Pickup address' : 'Delivery address'}" required style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;"/>
-      </div>
-      <div>
-        <label style="display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:0.4rem;">${isPickup ? 'Shipper Name' : 'Contact Name'}</label>
-        <input type="text" name="drop_contact[]" placeholder="e.g. Amazon" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;"/>
-      </div>
-      <div>
-        <label style="display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:0.4rem;">Date</label>
-        <input type="text" name="drop_date[]" placeholder="MM/DD/YY" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;"/>
-      </div>
-    </div>
-    ${!isPickup ? `
-    <div style="margin-top:0.75rem;">
-      <label style="display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:0.4rem;">Route &amp; Rate</label>
-      <select name="drop_route_id[]" style="width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;">
-        ${routeOptions(null)}
-      </select>
-    </div>` : `<input type="hidden" name="drop_route_id[]" value="0"/>`}
+    <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--amber);font-size:1rem;min-width:55px;">Leg ${legCount}</span>
+    <select name="route_id[]" onchange="updatePreview()" style="flex:1;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;">
+      ${routeOptions()}
+    </select>
+    <button type="button" onclick="this.closest('.leg-row').remove();renumber();updatePreview();" style="background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:4px;padding:0.5rem 0.75rem;cursor:pointer;">✕</button>
   `;
-  document.getElementById('stops-container').appendChild(div);
+  document.getElementById('legs-container').appendChild(div);
+  updatePreview();
 }
 
-// Init with pickup stop
-addStop('Pickup', true);
+function renumber() {
+  document.querySelectorAll('.leg-row span').forEach((s,i) => s.textContent = `Leg ${i+1}`);
+  legCount = document.querySelectorAll('.leg-row').length;
+}
+
+function updatePreview() {
+  const selects = document.querySelectorAll('select[name="route_id[]"]');
+  const card = document.getElementById('preview-card');
+  const content = document.getElementById('preview-content');
+  const selected = [];
+  selects.forEach(s => {
+    const rid = parseInt(s.value);
+    if (rid) { const r = routes.find(x => x.id === rid); if (r) selected.push(r); }
+  });
+  if (!selected.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  let totalRate = 0, totalFuel = 0;
+  let html = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
+  selected.forEach((r, i) => {
+    totalRate += parseFloat(r.rate);
+    totalFuel += parseFloat(r.fuel_surcharge || 0);
+    html += `<div style="display:flex;align-items:center;gap:1rem;padding:0.65rem 1rem;background:var(--dark);border-radius:5px;border:1px solid var(--border);">
+      <span style="color:var(--amber);font-weight:700;font-family:'Barlow Condensed',sans-serif;min-width:50px;">Leg ${i+1}</span>
+      <span style="flex:1;color:var(--bright);">${r.from_loc} → ${r.to_loc}</span>
+      <span style="color:var(--dim);font-size:0.85rem;">${r.shipper}</span>
+      <span style="color:var(--green);font-weight:600;">$${(parseFloat(r.rate)+parseFloat(r.fuel_surcharge||0)).toFixed(2)}</span>
+    </div>`;
+  });
+  html += `<div style="text-align:right;padding:0.5rem 1rem;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;">
+    TOTAL: <span style="color:var(--amber);">$${(totalRate+totalFuel).toFixed(2)}</span>
+  </div></div>`;
+  content.innerHTML = html;
+}
+
+addLeg();
 </script>
 {% endblock %}
