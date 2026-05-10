@@ -397,6 +397,12 @@ def new_load():
     if not routes:
         flash('No routes have been set up yet. Please contact the admin.','error')
         return redirect(url_for('dashboard'))
+    routes_json = [
+        {'id': r.id, 'from_loc': r.from_loc, 'to_loc': r.to_loc,
+         'shipper': r.shipper, 'rate': float(r.rate),
+         'fuel_surcharge': float(r.fuel_surcharge or 0)}
+        for r in routes
+    ]
     if request.method == 'POST':
         load_date    = request.form.get('load_date','').strip()
         commodity    = request.form.get('commodity','').strip()
@@ -406,10 +412,10 @@ def new_load():
         route_ids    = [r for r in route_ids if r and r != '0']
         if not load_date or not commodity or not weight:
             flash('Date, commodity and weight are required.','error')
-            return render_template('new_load.html', routes=routes)
+            return render_template('new_load.html', routes=routes, routes_json=routes_json)
         if not route_ids:
             flash('Please add at least one route leg.','error')
-            return render_template('new_load.html', routes=routes)
+            return render_template('new_load.html', routes=routes, routes_json=routes_json)
         load = LoadConfirmation(
             order_number=generate_order_number(), user_id=session['user_id'],
             load_date=load_date, commodity=commodity,
@@ -421,7 +427,7 @@ def new_load():
         db.session.commit()
         flash(f'Load {load.order_number} submitted for review.','success')
         return redirect(url_for('dashboard'))
-    return render_template('new_load.html', routes=routes)
+    return render_template('new_load.html', routes=routes, routes_json=routes_json)
 
 @app.route('/load/<int:load_id>/download')
 @login_required
