@@ -406,6 +406,12 @@ def new_load():
     if not routes:
         flash('No routes have been set up yet. Please contact the admin.','error')
         return redirect(url_for('dashboard'))
+    routes_json = [
+        {'id': r.id, 'from_loc': r.from_loc, 'to_loc': r.to_loc,
+         'shipper': r.shipper, 'rate': float(r.rate),
+         'fuel_surcharge': float(r.fuel_surcharge or 0)}
+        for r in routes
+    ]
     if request.method == 'POST':
         load_date    = request.form.get('load_date','').strip()
         commodity    = request.form.get('commodity','').strip()
@@ -428,7 +434,6 @@ def new_load():
         db.session.flush()
         for i, rid in enumerate(route_ids):
             db.session.add(LoadLeg(load_id=load.id, position=i+1, route_id=int(rid)))
-        # Handle doc uploads
         files = request.files.getlist('load_docs[]')
         for f in files:
             if f and f.filename and allowed_file(f.filename):
