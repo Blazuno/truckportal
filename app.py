@@ -7,6 +7,7 @@ from functools import wraps
 from io import BytesIO
 import os, random, string, boto3
 from botocore.client import Config
+from sqlalchemy import inspect as sa_inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from reportlab.lib.pagesizes import letter
@@ -139,10 +140,42 @@ def parse_money(value, default=None):
         return None
     return amount if amount >= 0 else None
 
+# Tables from a superseded schema. `load_drop` was replaced by `load_leg`, but
+# db.create_all() never drops a table, so databases created before that change
+# still carry it — rows and foreign keys included. Nothing reads it any more,
+# yet Postgres still enforces its constraints on delete.
+LEGACY_LOAD_CHILD_TABLES = ('load_drop',)
+
+def legacy_tables_present():
+    """Which superseded tables this particular database still has."""
+    existing = set(sa_inspect(db.engine).get_table_names())
+    return [t for t in LEGACY_LOAD_CHILD_TABLES if t in existing]
+
+def purge_legacy_load_rows(load_id):
+    """Clear rows in superseded tables that still point at this load.
+
+    Without this, deleting a load confirmation created under the old schema
+    fails on the foreign key those leftover rows still hold.
+    """
+    for table in legacy_tables_present():
+        # Table names come from the constant above, never from user input.
+        db.session.execute(text(f'DELETE FROM {table} WHERE load_id = :load_id'),
+                           {'load_id': load_id})
+
 def route_usage_counts():
-    """How many load legs reference each route, keyed by route id."""
-    return dict(db.session.query(LoadLeg.route_id, db.func.count(LoadLeg.id))
-                          .group_by(LoadLeg.route_id).all())
+    """How many load legs reference each route, keyed by route id.
+
+    Counts leftover rows in superseded tables too, so a route that only an old
+    record points at is still reported as in use.
+    """
+    counts = dict(db.session.query(LoadLeg.route_id, db.func.count(LoadLeg.id))
+                            .group_by(LoadLeg.route_id).all())
+    for table in legacy_tables_present():
+        rows = db.session.execute(text(
+            f'SELECT route_id, COUNT(*) FROM {table} WHERE route_id IS NOT NULL GROUP BY route_id'))
+        for route_id, n in rows:
+            counts[route_id] = counts.get(route_id, 0) + n
+    return counts
 
 def generate_order_number():
     while True:
@@ -664,9 +697,16 @@ def delete_load(load_id):
     if load.r2_key:
         try: get_r2().delete_object(Bucket=R2_BUCKET, Key=load.r2_key)
         except Exception as e: app.logger.error(f"R2 delete error: {e}")
-    db.session.delete(load)
-    db.session.commit()
-    flash('Load confirmation deleted.','success')
+    try:
+        purge_legacy_load_rows(load.id)
+        db.session.delete(load)
+        db.session.commit()
+        flash('Load confirmation deleted.','success')
+    except IntegrityError:
+        db.session.rollback()
+        app.logger.exception(f"delete_load failed for load {load_id}")
+        flash('Could not delete this load confirmation — something in the database '
+              'still references it. Please report this.', 'error')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/routes')
@@ -702,7 +742,7 @@ def add_route():
 @admin_required
 def edit_route(route_id):
     route  = Route.query.get_or_404(route_id)
-    in_use = LoadLeg.query.filter_by(route_id=route.id).count()
+    in_use = route_usage_counts().get(route.id, 0)
 
     if request.method == 'POST':
         from_loc = request.form.get('from_loc','').strip()
@@ -734,7 +774,7 @@ def edit_route(route_id):
 @admin_required
 def delete_route(route_id):
     route  = Route.query.get_or_404(route_id)
-    in_use = LoadLeg.query.filter_by(route_id=route.id).count()
+    in_use = route_usage_counts().get(route.id, 0)
 
     # Load confirmations point at routes, so deleting one that is in use would
     # break those records (and the database rejects it outright).
