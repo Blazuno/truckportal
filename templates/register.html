@@ -24,19 +24,19 @@
       <form method="POST" action="{{ url_for('register') }}">
         <div class="form-group">
           <label>Full Name</label>
-          <input type="text" name="name" required placeholder="John Smith"/>
+          <input type="text" name="name" required autocomplete="name" placeholder="John Smith"/>
         </div>
         <div class="form-group">
           <label>Email Address</label>
-          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com"/>
+          <input type="email" name="email" required autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"/>
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" name="password" required placeholder="Min 8 characters"/>
+          <input type="password" name="password" required autocomplete="new-password" placeholder="Min 8 characters"/>
         </div>
         <div class="form-group">
           <label>Confirm Password</label>
-          <input type="password" name="password_confirm" required placeholder="Re-enter your password"/>
+          <input type="password" name="password_confirm" required autocomplete="new-password" placeholder="Re-enter your password"/>
         </div>
         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:0.5rem;">
           Create Account

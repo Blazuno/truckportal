@@ -4,7 +4,7 @@
 {% block body %}
 <div class="container">
   <div class="page-header">
-    <div style="display:flex;align-items:center;gap:1rem;">
+    <div class="header-row">
       <a href="{{ url_for('admin_dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
       <div>
         <div class="page-title">Route List</div>
@@ -26,7 +26,7 @@
   <div class="card">
     <div class="card-title">Add New Route</div>
     <form method="POST" action="{{ url_for('add_route') }}">
-      <div style="display:grid;grid-template-columns:2fr 2fr 1.5fr 1fr 1fr auto;gap:1rem;align-items:end;">
+      <div class="grid grid-3">
         <div class="form-group" style="margin:0;">
           <label>From (full address)</label>
           <input type="text" name="from_loc" required/>
@@ -41,13 +41,15 @@
         </div>
         <div class="form-group" style="margin:0;">
           <label>Rate ($)</label>
-          <input type="number" name="rate" step="0.01" min="0" required/>
+          <input type="number" name="rate" step="0.01" min="0" inputmode="decimal" required/>
         </div>
         <div class="form-group" style="margin:0;">
           <label>Fuel ($)</label>
-          <input type="number" name="fuel_surcharge" step="0.01" min="0" placeholder="0"/>
+          <input type="number" name="fuel_surcharge" step="0.01" min="0" inputmode="decimal" placeholder="0"/>
         </div>
-        <button type="submit" class="btn btn-primary" style="height:44px;">Add</button>
+      </div>
+      <div class="btn-row" style="margin-top:1.25rem;">
+        <button type="submit" class="btn btn-primary">Add Route</button>
       </div>
     </form>
   </div>
@@ -56,7 +58,7 @@
     <div class="card-title">All Routes ({{ routes|length }})</div>
     {% if routes %}
     <div class="table-wrap">
-      <table>
+      <table class="responsive">
         <thead>
           <tr>
             <th>From</th>
@@ -71,13 +73,13 @@
         <tbody>
           {% for r in routes %}
           <tr>
-            <td style="color:var(--bright);">{{ r.from_loc }}</td>
-            <td style="color:var(--bright);">{{ r.to_loc }}</td>
-            <td style="color:var(--dim);">{{ r.shipper }}</td>
-            <td>${{ "%.2f"|format(r.rate|float) }}</td>
-            <td>${{ "%.2f"|format(r.fuel_surcharge|float) }}</td>
-            <td style="color:var(--green);font-weight:600;">${{ "%.2f"|format((r.rate|float) + (r.fuel_surcharge|float)) }}</td>
-            <td>
+            <td data-label="From" style="color:var(--bright);">{{ r.from_loc }}</td>
+            <td data-label="To" style="color:var(--bright);">{{ r.to_loc }}</td>
+            <td data-label="Shipper" style="color:var(--dim);">{{ r.shipper }}</td>
+            <td data-label="Rate">${{ "%.2f"|format(r.rate|float) }}</td>
+            <td data-label="Fuel">${{ "%.2f"|format(r.fuel_surcharge|float) }}</td>
+            <td data-label="Total" style="color:var(--green);font-weight:600;">${{ "%.2f"|format((r.rate|float) + (r.fuel_surcharge|float)) }}</td>
+            <td data-label="" class="cell-actions">
               <form method="POST" action="{{ url_for('delete_route', route_id=r.id) }}"
                     onsubmit="return confirm('Delete this route?')">
                 <button type="submit" class="btn btn-danger btn-sm">Delete</button>

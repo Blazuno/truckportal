@@ -4,7 +4,7 @@
 {% block body %}
 <div class="container">
   <div class="page-header">
-    <div style="display:flex;align-items:center;gap:1rem;">
+    <div class="header-row">
       <a href="{{ url_for('admin_dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
       <div>
         <div class="page-title">Load {{ load.order_number }}</div>
@@ -23,22 +23,22 @@
     {% endif %}
   {% endwith %}
 
-  <form method="POST" action="{{ url_for('review_load', load_id=load.id) }}">
+  <form method="POST" action="{{ url_for('review_load', load_id=load.id) }}" id="reviewForm">
 
     <!-- Carrier (read-only) -->
     <div class="card">
       <div class="card-title">Carrier</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+      <div class="grid grid-3" style="gap:1rem;">
         <div>
-          <div style="font-size:0.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Business Name</div>
+          <div class="field-label">Business Name</div>
           <div style="color:var(--bright);">{{ load.contractor.business_name or load.contractor.name }}</div>
         </div>
         <div>
-          <div style="font-size:0.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Address</div>
+          <div class="field-label">Address</div>
           <div style="color:var(--bright);">{{ load.contractor.business_address or '—' }}</div>
         </div>
         <div>
-          <div style="font-size:0.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Phone</div>
+          <div class="field-label">Phone</div>
           <div style="color:var(--bright);">{{ load.contractor.phone or '—' }}</div>
         </div>
       </div>
@@ -47,7 +47,7 @@
     <!-- Load Details -->
     <div class="card">
       <div class="card-title">Load Details</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:1.25rem;">
+      <div class="grid grid-5">
         <div class="form-group" style="margin:0;">
           <label>Date</label>
           <input type="text" name="load_date" value="{{ load.load_date }}"/>
@@ -75,15 +75,15 @@
       {% for leg in load.legs %}
         {% set total_rate.val = total_rate.val + leg.route.rate|float %}
         {% set total_fuel.val = total_fuel.val + leg.route.fuel_surcharge|float %}
-      <div style="display:flex;align-items:center;gap:1rem;padding:0.75rem 1rem;background:var(--dark);border:1px solid var(--border);border-radius:6px;margin-bottom:0.5rem;">
-        <span style="color:var(--amber);font-weight:700;font-family:'Barlow Condensed',sans-serif;min-width:55px;">Leg {{ leg.position }}</span>
-        <span style="flex:1;color:var(--bright);">{{ leg.route.from_loc }} → {{ leg.route.to_loc }}</span>
-        <span style="color:var(--dim);font-size:0.85rem;">{{ leg.route.shipper }}</span>
-        <span style="color:var(--green);font-weight:600;">${{ "%.2f"|format((leg.route.rate|float) + (leg.route.fuel_surcharge|float)) }}</span>
+      <div class="leg-row">
+        <span class="leg-num">Leg {{ leg.position }}</span>
+        <span class="leg-main">{{ leg.route.from_loc }} → {{ leg.route.to_loc }}</span>
+        <span class="leg-meta">{{ leg.route.shipper }}</span>
+        <span class="leg-cost">${{ "%.2f"|format((leg.route.rate|float) + (leg.route.fuel_surcharge|float)) }}</span>
       </div>
       {% endfor %}
-      <div style="text-align:right;padding:0.5rem 1rem;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;">
-        TOTAL: <span style="color:var(--amber);">${{ "%.2f"|format(total_rate.val + total_fuel.val) }}</span>
+      <div class="leg-total">
+        TOTAL: <span>${{ "%.2f"|format(total_rate.val + total_fuel.val) }}</span>
       </div>
     </div>
 
@@ -91,12 +91,13 @@
     <div class="card">
       <div class="card-title">Attached Documents</div>
       {% if load.docs %}
-      <div style="display:flex;flex-direction:column;gap:0.5rem;">
+      <div>
         {% for doc in load.docs %}
-        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.85rem;background:var(--dark);border:1px solid var(--border);border-radius:5px;">
-          <span style="flex:1;color:var(--bright);font-size:0.9rem;">{{ doc.original }}</span>
-          <span style="color:var(--dim);font-size:0.8rem;">{{ doc.uploaded.strftime('%b %d, %Y') }}</span>
-          <a class="btn btn-ghost btn-sm" href="{{ url_for('download_load_doc', doc_id=doc.id) }}">↓ Download</a>
+        <div class="leg-row" style="margin-bottom:0.5rem;">
+          <span class="leg-main">{{ doc.original }}</span>
+          <span class="leg-meta">{{ doc.uploaded.strftime('%b %d, %Y') }}</span>
+          <a class="btn btn-ghost btn-sm leg-remove" style="border-color:var(--border);"
+             href="{{ url_for('download_load_doc', doc_id=doc.id) }}">↓ Download</a>
         </div>
         {% endfor %}
       </div>
@@ -107,18 +108,20 @@
       {% endif %}
     </div>
 
-    <!-- Actions -->
-    <div style="display:flex;gap:1rem;margin-top:0.5rem;align-items:center;">
-      <button type="submit" name="action" value="update" class="btn btn-ghost">Save Changes</button>
-      <button type="submit" name="action" value="confirm" class="btn btn-primary"
-              onclick="return confirm('Confirm this load and generate the PDF?')">
-        ✓ Confirm &amp; Generate PDF
-      </button>
-      <form method="POST" action="{{ url_for('delete_load', load_id=load.id) }}" style="margin-left:auto;">
-        <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this load?')">Delete</button>
-      </form>
-    </div>
-
   </form>
+
+  <!-- Delete lives in its own form so it never submits the review form -->
+  <form method="POST" action="{{ url_for('delete_load', load_id=load.id) }}" id="deleteLoadForm"
+        onsubmit="return confirm('Delete this load?')"></form>
+
+  <!-- Actions -->
+  <div class="btn-row">
+    <button type="submit" form="reviewForm" name="action" value="update" class="btn btn-ghost">Save Changes</button>
+    <button type="submit" form="reviewForm" name="action" value="confirm" class="btn btn-primary"
+            onclick="return confirm('Confirm this load and generate the PDF?')">
+      ✓ Confirm &amp; Generate PDF
+    </button>
+    <button type="submit" form="deleteLoadForm" class="btn btn-danger push">Delete</button>
+  </div>
 </div>
 {% endblock %}

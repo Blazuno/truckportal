@@ -22,7 +22,7 @@
 
     <div class="card">
       <div class="card-title">Load Details</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:1.25rem;">
+      <div class="grid grid-5">
         <div class="form-group" style="margin:0;">
           <label>Date</label>
           <input type="text" name="load_date" placeholder="05/10/26" required/>
@@ -69,14 +69,16 @@
         <input type="file" name="load_docs[]" id="docInput" accept=".pdf,.png,.jpg,.jpeg" multiple/>
         <div class="upload-icon">📎</div>
         <div class="upload-text" id="uploadText">
-          <strong>Click to choose files</strong> or drag &amp; drop<br/>
+          <strong>Tap to choose files</strong> or drag &amp; drop<br/>
           PDF, PNG, JPG — multiple files allowed
         </div>
       </div>
     </div>
 
-    <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">Submit for Review</button>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost" style="margin-left:0.75rem;">Cancel</a>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary">Submit for Review</button>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">Cancel</a>
+    </div>
 
   </form>
 </div>
@@ -97,21 +99,23 @@ function addLeg() {
   legCount++;
   const div = document.createElement('div');
   div.className = 'leg-row';
-  div.style.cssText = 'display:flex;align-items:center;gap:1rem;background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:0.75rem;';
   div.innerHTML = `
-    <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--amber);font-size:1rem;min-width:55px;">Leg ${legCount}</span>
-    <select name="route_id[]" onchange="updatePreview()" style="flex:1;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:0.65rem 0.85rem;color:var(--bright);font-family:'Barlow',sans-serif;font-size:0.9rem;outline:none;">
+    <span class="leg-num">Leg ${legCount}</span>
+    <select name="route_id[]" class="field-input" onchange="updatePreview()" style="flex:1;">
       ${routeOptions()}
     </select>
-    <button type="button" onclick="this.closest('.leg-row').remove();renumber();updatePreview();" style="background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:4px;padding:0.5rem 0.75rem;cursor:pointer;">✕</button>
+    <button type="button" class="leg-remove" aria-label="Remove leg"
+            onclick="this.closest('.leg-row').remove();renumber();updatePreview();">✕</button>
   `;
   document.getElementById('legs-container').appendChild(div);
   updatePreview();
 }
 
 function renumber() {
-  document.querySelectorAll('.leg-row span').forEach((s,i) => s.textContent = `Leg ${i+1}`);
-  legCount = document.querySelectorAll('.leg-row').length;
+  // Scoped to the editor — the summary card renders .leg-row elements too
+  const rows = document.querySelectorAll('#legs-container .leg-row');
+  rows.forEach((row, i) => row.querySelector('.leg-num').textContent = `Leg ${i+1}`);
+  legCount = rows.length;
 }
 
 function updatePreview() {
@@ -126,19 +130,19 @@ function updatePreview() {
   if (!selected.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   let totalRate = 0, totalFuel = 0;
-  let html = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
+  let html = '<div>';
   selected.forEach((r, i) => {
     totalRate += parseFloat(r.rate);
     totalFuel += parseFloat(r.fuel_surcharge || 0);
-    html += `<div style="display:flex;align-items:center;gap:1rem;padding:0.65rem 1rem;background:var(--dark);border-radius:5px;border:1px solid var(--border);">
-      <span style="color:var(--amber);font-weight:700;font-family:'Barlow Condensed',sans-serif;min-width:50px;">Leg ${i+1}</span>
-      <span style="flex:1;color:var(--bright);">${r.from_loc} → ${r.to_loc}</span>
-      <span style="color:var(--dim);font-size:0.85rem;">${r.shipper}</span>
-      <span style="color:var(--green);font-weight:600;">$${(parseFloat(r.rate)+parseFloat(r.fuel_surcharge||0)).toFixed(2)}</span>
+    html += `<div class="leg-row">
+      <span class="leg-num">Leg ${i+1}</span>
+      <span class="leg-main">${r.from_loc} → ${r.to_loc}</span>
+      <span class="leg-meta">${r.shipper}</span>
+      <span class="leg-cost">$${(parseFloat(r.rate)+parseFloat(r.fuel_surcharge||0)).toFixed(2)}</span>
     </div>`;
   });
-  html += `<div style="text-align:right;padding:0.5rem 1rem;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;">
-    TOTAL: <span style="color:var(--amber);">$${(totalRate+totalFuel).toFixed(2)}</span>
+  html += `<div class="leg-total">
+    TOTAL: <span>$${(totalRate+totalFuel).toFixed(2)}</span>
   </div></div>`;
   content.innerHTML = html;
 }

@@ -13,7 +13,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'fallback-for-local-dev')
@@ -145,16 +145,35 @@ SPECIAL_INSTRUCTIONS = [
     "Re-brokering, assigning or interlining of this shipment will void our obligation to pay your freight.",
 ]
 
+NON_SOLICITATION_CLAUSE = (
+    "<b>NON-SOLICITATION &amp; NON-CIRCUMVENTION:</b> The Carrier acknowledges that the customers, shippers, "
+    "consignees, receivers and brokers made known to it under this agreement are the confidential and proprietary "
+    "business relationships of Viveck Aryan Transport Inc. For a period of two (2) years following the completion "
+    "or termination of this agreement, howsoever caused, the Carrier shall not, whether directly or indirectly "
+    "(including through any officer, employee, driver, agent, affiliate, successor or related entity) contact, "
+    "solicit, service, transact with, or accept business from any such party in respect of freight of the type "
+    "handled hereunder, nor otherwise circumvent Viveck Aryan Transport Inc. in any dealing with that party. "
+    "Any breach of this provision shall be treated as a material breach and shall entitle Viveck Aryan Transport Inc. "
+    "to liquidated damages equal to the gross revenue earned by the Carrier from all business so diverted, together "
+    "with all legal fees, collection costs and disbursements incurred on a full-indemnity basis, to injunctive "
+    "relief without the necessity of posting security, and to the immediate withholding of any sums otherwise "
+    "payable to the Carrier, in addition to every other remedy available at law or in equity. "
+    "The Carrier confirms that this restriction is reasonable and necessary to protect the legitimate business "
+    "interests of Viveck Aryan Transport Inc., and it survives the termination of this agreement."
+)
+
 def build_pdf(load):
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter,
                             leftMargin=0.6*inch, rightMargin=0.6*inch,
-                            topMargin=0.5*inch, bottomMargin=0.5*inch)
+                            topMargin=0.4*inch, bottomMargin=0.4*inch)
     styles = getSampleStyleSheet()
     bold   = ParagraphStyle('bold',   parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9)
     normal = ParagraphStyle('normal', parent=styles['Normal'], fontName='Helvetica', fontSize=9)
     small  = ParagraphStyle('small',  parent=styles['Normal'], fontName='Helvetica', fontSize=8)
     center = ParagraphStyle('center', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=11, alignment=TA_CENTER)
+    clause = ParagraphStyle('clause', parent=styles['Normal'], fontName='Helvetica', fontSize=6.1,
+                            leading=7.2, alignment=TA_JUSTIFY)
 
     contractor = load.contractor
     story = []
@@ -271,16 +290,31 @@ def build_pdf(load):
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Spacer(1, 6))
 
+    ct = Table([[Paragraph(NON_SOLICITATION_CLAUSE, clause)]], colWidths=[7.2*inch])
+    ct.setStyle(TableStyle([
+        ('BOX',(0,0),(-1,-1),1,colors.black),
+        ('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#f5f5f5')),
+        ('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),
+        ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
+    ]))
+    story.append(ct)
+    story.append(Spacer(1, 6))
+
     story.append(Paragraph(
         "<b>Invoicing Instructions:</b> Settlements paid within 30 days from the date we receive your invoice. "
         "All invoices must include a SIGNED DELIVERY RECEIPT, BOL and ORDER # and be sent to the address above. "
         "THIS AGREEMENT MUST BE SIGNED AND EMAILED TO viveck.aryan.trans@gmail.com", small))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
+
+    story.append(Paragraph(
+        "By signing below, the Carrier acknowledges having read and accepted all terms of this agreement, "
+        "including the Non-Solicitation &amp; Non-Circumvention provision set out above.", small))
+    story.append(Spacer(1, 6))
 
     # Signature — carrier only
     sig = Table([
         [Paragraph(f"<b>CARRIER: {contractor.business_name or contractor.name}</b>", small)],
-        [Spacer(1, 30)],
+        [Spacer(1, 8)],
         [Paragraph("NAME: ___________________________", small)],
         [Paragraph("TITLE: __________________________", small)],
         [Paragraph("SIGNATURE: ______________________", small)],
@@ -288,7 +322,7 @@ def build_pdf(load):
     sig.setStyle(TableStyle([
         ('BOX',(0,0),(-1,-1),0.5,colors.grey),
         ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
+        ('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3),
         ('LEFTPADDING',(0,0),(-1,-1),8),
     ]))
     story.append(sig)

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#181c23"/>
   <title>{% block title %}Viveck Aryan Transport{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -22,9 +23,12 @@
       --green:   #3ecf8e;
       --red:     #f55656;
       --blue:    #4a90d9;
+      --nav-h:   60px;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { -webkit-text-size-adjust: 100%; }
 
     body {
       background: var(--coal);
@@ -32,6 +36,8 @@
       font-family: 'Barlow', sans-serif;
       font-weight: 400;
       min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: rgba(245,166,35,0.15);
     }
 
     /* ── NAV ── */
@@ -41,8 +47,9 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 1rem;
       padding: 0 2rem;
-      height: 60px;
+      height: var(--nav-h);
       position: sticky;
       top: 0;
       z-index: 100;
@@ -55,12 +62,21 @@
       letter-spacing: 0.05em;
       color: var(--bright);
       text-decoration: none;
+      white-space: nowrap;
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
 
     .nav-brand span { color: var(--amber); }
+
+    .nav-menu {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
 
     .nav-links {
       display: flex;
@@ -80,10 +96,45 @@
 
     .nav-links a:hover { color: var(--amber); }
 
+    .nav-side {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
     .nav-user {
       font-size: 0.85rem;
       color: var(--dim);
     }
+
+    /* Hamburger — hidden on desktop */
+    .nav-toggle {
+      display: none;
+      width: 44px;
+      height: 44px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 4px;
+      padding: 0;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .nav-toggle span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--bright);
+      border-radius: 2px;
+      transition: transform 0.22s, opacity 0.22s;
+    }
+
+    .nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    .nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+    .nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
     .btn-logout {
       background: transparent;
@@ -95,6 +146,7 @@
       font-family: 'Barlow', sans-serif;
       font-size: 0.85rem;
       text-decoration: none;
+      white-space: nowrap;
       transition: all 0.2s;
     }
     .btn-logout:hover { border-color: var(--red); color: var(--red); }
@@ -115,7 +167,8 @@
     .page-title {
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 700;
-      font-size: 2rem;
+      font-size: clamp(1.5rem, 5.5vw, 2rem);
+      line-height: 1.15;
       letter-spacing: 0.04em;
       color: var(--bright);
       text-transform: uppercase;
@@ -126,6 +179,23 @@
       font-size: 0.9rem;
       margin-top: 0.3rem;
     }
+
+    /* Header with a back button beside the title */
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── GRID HELPERS (collapse on small screens) ── */
+    .grid   { display: grid; gap: 1.25rem; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    /* Add-route form: keeps the addresses wider than the money fields */
+    .grid-routes { display: grid; gap: 1.25rem; grid-template-columns: 2fr 2fr 1.5fr 1fr 1fr; }
 
     /* ── CARDS ── */
     .card {
@@ -146,10 +216,21 @@
       margin-bottom: 1.25rem;
     }
 
+    /* Card heading with an action button on the right */
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+    .card-head .card-title { margin: 0; }
+
     /* ── FORMS ── */
     .form-group { margin-bottom: 1.25rem; }
 
-    label {
+    label, .field-label {
       display: block;
       font-size: 0.8rem;
       font-weight: 600;
@@ -162,6 +243,10 @@
     input[type="text"],
     input[type="email"],
     input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="date"],
+    textarea,
     select {
       width: 100%;
       background: var(--dark);
@@ -170,17 +255,33 @@
       padding: 0.75rem 1rem;
       color: var(--bright);
       font-family: 'Barlow', sans-serif;
-      font-size: 0.95rem;
+      /* 16px keeps iOS Safari from zooming the page on focus */
+      font-size: 1rem;
       outline: none;
       transition: border-color 0.2s;
     }
 
-    input:focus, select:focus { border-color: var(--amber); }
+    input:focus, select:focus, textarea:focus { border-color: var(--amber); }
+
+    /* Inputs sitting on a darker sub-panel (stop rows) */
+    .field-input {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 0.7rem 0.85rem;
+      color: var(--bright);
+      font-family: 'Barlow', sans-serif;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field-input:focus { border-color: var(--amber); }
 
     .upload-area {
       border: 2px dashed var(--muted);
       border-radius: 8px;
-      padding: 2.5rem;
+      padding: 2.5rem 1.25rem;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s;
@@ -200,14 +301,16 @@
     }
 
     .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
-    .upload-text { color: var(--dim); font-size: 0.9rem; }
+    .upload-text { color: var(--dim); font-size: 0.9rem; word-break: break-word; }
     .upload-text strong { color: var(--amber); }
 
     /* ── BUTTONS ── */
     .btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.4rem;
+      min-height: 44px;
       padding: 0.65rem 1.5rem;
       border-radius: 5px;
       font-family: 'Barlow Condensed', sans-serif;
@@ -223,14 +326,23 @@
 
     .btn-primary  { background: var(--amber); color: var(--coal); }
     .btn-primary:hover  { background: var(--amber2); }
-    .btn-sm { padding: 0.35rem 0.85rem; font-size: 0.85rem; }
+    .btn-sm { min-height: 36px; padding: 0.35rem 0.85rem; font-size: 0.85rem; }
     .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--dim); }
     .btn-ghost:hover { border-color: var(--amber); color: var(--amber); }
     .btn-danger { background: transparent; border: 1px solid var(--border); color: var(--red); }
     .btn-danger:hover { background: var(--red); color: white; }
 
+    /* Row of form actions — wraps, then stacks full width on phones */
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .btn-row .push { margin-left: auto; }
+
     /* ── TABLE ── */
-    .table-wrap { overflow-x: auto; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
     table {
       width: 100%;
@@ -325,10 +437,57 @@
     .stat-value.amber { color: var(--amber); }
     .stat-value.green { color: var(--green); }
 
+    /* ── LEG & DOC ROWS ──
+       A label, a description that can run long, and trailing metadata. On a
+       phone the description drops to its own line instead of being squeezed. */
+    .leg-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--dark);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .leg-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--amber);
+      min-width: 55px;
+    }
+
+    .leg-main { flex: 1; min-width: 0; color: var(--bright); overflow-wrap: anywhere; }
+    .leg-meta { color: var(--dim); font-size: 0.85rem; }
+    .leg-cost { color: var(--green); font-weight: 600; white-space: nowrap; }
+
+    .leg-remove {
+      flex: 0 0 auto;
+      min-height: 40px;
+      padding: 0.5rem 0.75rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--dim);
+      cursor: pointer;
+    }
+    .leg-remove:hover { border-color: var(--red); color: var(--red); }
+
+    .leg-total {
+      text-align: right;
+      padding: 0.5rem 1rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .leg-total span { color: var(--amber); }
+
     /* ── EMPTY ── */
     .empty {
       text-align: center;
-      padding: 3rem;
+      padding: 3rem 1rem;
       color: var(--dim);
     }
     .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
@@ -357,7 +516,7 @@
     .auth-logo h1 {
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 800;
-      font-size: 2.5rem;
+      font-size: clamp(1.9rem, 8vw, 2.5rem);
       letter-spacing: 0.05em;
       color: var(--bright);
     }
@@ -397,7 +556,159 @@
     .inline-form select {
       width: auto;
       padding: 0.3rem 0.5rem;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
+    }
+
+    /* ── TABLET ── */
+    @media (max-width: 900px) {
+      .container { padding: 2rem 1.5rem; }
+      .grid-3, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid-routes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    /* ── MOBILE NAV ── */
+    @media (max-width: 768px) {
+      nav { padding: 0 1rem; }
+      .nav-toggle { display: flex; }
+
+      .nav-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        padding: 0.25rem 1rem 1rem;
+        background: var(--dark);
+        border-bottom: 2px solid var(--amber);
+        box-shadow: 0 14px 30px rgba(0,0,0,0.5);
+      }
+      .nav-menu.open { display: flex; }
+
+      .nav-links {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+      }
+      .nav-links a {
+        display: block;
+        padding: 0.95rem 0.25rem;
+        font-size: 1rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .nav-side {
+        justify-content: space-between;
+        padding-top: 1rem;
+      }
+      .nav-user { font-size: 0.95rem; color: var(--text); }
+      .btn-logout { padding: 0.6rem 1.1rem; }
+    }
+
+    /* ── PHONE ── */
+    @media (max-width: 640px) {
+      .container { padding: 1.5rem 1rem; }
+
+      .page-header { margin-bottom: 1.5rem; padding-bottom: 1rem; }
+
+      .card { padding: 1.15rem; margin-bottom: 1rem; }
+      .card-title { font-size: 1rem; margin-bottom: 1rem; }
+
+      .grid-2, .grid-3, .grid-4, .grid-5, .grid-routes { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+
+      .stats-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+      .stat-card { padding: 0.9rem 1rem; }
+      .stat-label { font-size: 0.68rem; letter-spacing: 0.06em; }
+      .stat-value { font-size: 1.6rem; }
+
+      /* Stack form actions full width so they are easy to hit */
+      .btn-row { gap: 0.65rem; }
+      .btn-row > .btn,
+      .btn-row > form,
+      .btn-row > form > .btn { width: 100%; }
+      .btn-row .push { margin-left: 0; }
+      .btn-row .btn-sm { width: auto; }
+
+      /* Leg rows reflow: label + trailing control stay on line one,
+         the long route description wraps underneath. */
+      .leg-row { flex-wrap: wrap; gap: 0.5rem 0.75rem; }
+      .leg-num { min-width: 0; }
+      .leg-cost { order: 1; margin-left: auto; }
+      .leg-remove { order: 2; margin-left: auto; }
+      .leg-row select, .leg-row .field-input, .leg-main { flex: 1 1 100%; order: 5; }
+      .leg-meta { order: 6; }
+
+      .upload-area { padding: 1.75rem 1rem; }
+      .upload-icon { font-size: 2rem; }
+
+      .auth-wrap { align-items: flex-start; padding: 3rem 1rem 1.5rem; }
+      .auth-logo { margin-bottom: 1.75rem; }
+      .auth-card { padding: 1.4rem; }
+
+      .empty { padding: 2rem 1rem; }
+      .empty-icon { font-size: 2.25rem; }
+    }
+
+    /* ── RESPONSIVE TABLES ──
+       Tables tagged .responsive collapse into stacked cards; each cell shows
+       its column name from data-label instead of relying on the header row. */
+    @media (max-width: 720px) {
+      table.responsive { font-size: 0.95rem; }
+      table.responsive thead { display: none; }
+      table.responsive,
+      table.responsive tbody,
+      table.responsive tr,
+      table.responsive td {
+        display: block;
+        width: 100%;
+      }
+
+      table.responsive tr {
+        background: var(--dark);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.25rem 0.9rem;
+        margin-bottom: 0.75rem;
+      }
+      table.responsive tr:last-child { margin-bottom: 0; }
+      table.responsive tr:hover td { background: transparent; }
+
+      table.responsive td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.7rem 0;
+        text-align: right;
+        border-bottom: 1px solid var(--border);
+        overflow-wrap: anywhere;
+      }
+      table.responsive tr td:last-child { border-bottom: none; }
+
+      table.responsive td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        text-align: left;
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 700;
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+
+      table.responsive td.cell-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+      /* Cells holding a whole panel (e.g. the docs drawer) stack instead */
+      table.responsive td.cell-block { display: block; text-align: left; }
+      table.responsive td.cell-block::before { display: block; margin-bottom: 0.5rem; }
     }
   </style>
 </head>
@@ -406,21 +717,50 @@
 {% if session.user_id %}
 <nav>
   <a class="nav-brand" href="{{ url_for('index') }}">Viveck Aryan <span>Transport</span></a>
-  <ul class="nav-links">
-    {% if session.is_admin %}
-      <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
-      <li><a href="{{ url_for('manage_routes') }}">Routes</a></li>
-    {% else %}
-      <li><a href="{{ url_for('dashboard') }}">My Invoices</a></li>
-      <li><a href="{{ url_for('new_load') }}">New Load</a></li>
-      <li><a href="{{ url_for('profile') }}">Profile</a></li>
-    {% endif %}
-  </ul>
-  <div style="display:flex;align-items:center;gap:1rem;">
-    <span class="nav-user">{{ session.user_name }}</span>
-    <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>
+
+  <button class="nav-toggle" id="navToggle" type="button"
+          aria-label="Toggle navigation" aria-expanded="false" aria-controls="navMenu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <div class="nav-menu" id="navMenu">
+    <ul class="nav-links">
+      {% if session.is_admin %}
+        <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+        <li><a href="{{ url_for('manage_routes') }}">Routes</a></li>
+      {% else %}
+        <li><a href="{{ url_for('dashboard') }}">My Invoices</a></li>
+        <li><a href="{{ url_for('new_load') }}">New Load</a></li>
+        <li><a href="{{ url_for('profile') }}">Profile</a></li>
+      {% endif %}
+    </ul>
+    <div class="nav-side">
+      <span class="nav-user">{{ session.user_name }}</span>
+      <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>
+    </div>
   </div>
 </nav>
+
+<script>
+  (function () {
+    var toggle = document.getElementById('navToggle');
+    var menu   = document.getElementById('navMenu');
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener('click', function () {
+      var open = menu.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    // Tapping outside the panel closes it
+    document.addEventListener('click', function (e) {
+      if (!menu.classList.contains('open')) return;
+      if (menu.contains(e.target) || toggle.contains(e.target)) return;
+      menu.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+    });
+  })();
+</script>
 {% endif %}
 
 {% block body %}{% endblock %}

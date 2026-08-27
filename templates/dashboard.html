@@ -27,27 +27,27 @@
         <input type="file" name="invoice" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" required/>
         <div class="upload-icon">📄</div>
         <div class="upload-text" id="uploadText">
-          <strong>Click to choose a file</strong> or drag &amp; drop<br/>
+          <strong>Tap to choose a file</strong> or drag &amp; drop<br/>
           PDF, PNG, JPG — up to 16 MB
         </div>
       </div>
-      <button type="submit" class="btn btn-primary" style="margin-top:1.25rem;">
-        Submit Invoice
-      </button>
+      <div class="btn-row" style="margin-top:1.25rem;">
+        <button type="submit" class="btn btn-primary">Submit Invoice</button>
+      </div>
     </form>
   </div>
 
 
   <!-- Load Confirmations -->
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-      <div class="card-title" style="margin:0;">Load Confirmations</div>
+    <div class="card-head">
+      <div class="card-title">Load Confirmations</div>
       <a href="{{ url_for('new_load') }}" class="btn btn-primary btn-sm">+ New Load</a>
     </div>
 
     {% if loads %}
     <div class="table-wrap">
-      <table>
+      <table class="responsive">
         <thead>
           <tr>
             <th>Order #</th>
@@ -61,17 +61,17 @@
         <tbody>
           {% for load in loads %}
           <tr>
-            <td style="color:var(--amber);font-weight:600;">{{ load.order_number }}</td>
-            <td style="color:var(--dim);">{{ load.created.strftime('%b %d, %Y') }}</td>
-            <td>{{ load.pickup_date }}</td>
-            <td>{{ load.commodity }}</td>
-            <td>
+            <td data-label="Order #" style="color:var(--amber);font-weight:600;">{{ load.order_number }}</td>
+            <td data-label="Submitted" style="color:var(--dim);">{{ load.created.strftime('%b %d, %Y') }}</td>
+            <td data-label="Pickup Date">{{ load.pickup_date }}</td>
+            <td data-label="Commodity">{{ load.commodity }}</td>
+            <td data-label="Status">
               <span class="badge {% if load.status == 'Confirmed' %}badge-paid{% else %}badge-pending{% endif %}">
                 {{ load.status }}
               </span>
             </td>
-            <td>
-              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+            <td data-label="Documents" class="cell-block">
+              <div class="btn-row" style="gap:0.5rem;">
                 {% if load.status == 'Confirmed' %}
                 <a class="btn btn-ghost btn-sm" href="{{ url_for('download_load', load_id=load.id) }}">↓ PDF</a>
                 {% else %}
@@ -85,7 +85,7 @@
                 {% if load.docs %}
                   {% for doc in load.docs %}
                   <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">
-                    <span style="flex:1;font-size:0.85rem;color:var(--text);">{{ doc.original }}</span>
+                    <span style="flex:1;min-width:0;font-size:0.85rem;color:var(--text);overflow-wrap:anywhere;">{{ doc.original }}</span>
                     <a class="btn btn-ghost btn-sm" href="{{ url_for('download_load_doc', doc_id=doc.id) }}">↓</a>
                     <form method="POST" action="{{ url_for('delete_load_doc', doc_id=doc.id) }}" style="display:inline;">
                       <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this doc?')">✕</button>
@@ -95,9 +95,9 @@
                 {% else %}
                   <p style="color:var(--dim);font-size:0.85rem;margin-bottom:0.5rem;">No docs attached yet.</p>
                 {% endif %}
-                <form method="POST" action="{{ url_for('upload_load_doc', load_id=load.id) }}" enctype="multipart/form-data" style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;">
+                <form method="POST" action="{{ url_for('upload_load_doc', load_id=load.id) }}" enctype="multipart/form-data" style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
                   <input type="file" name="load_docs[]" multiple accept=".pdf,.png,.jpg,.jpeg"
-                    style="font-size:0.8rem;color:var(--dim);flex:1;"/>
+                    style="font-size:0.8rem;color:var(--dim);flex:1;min-width:150px;"/>
                   <button type="submit" class="btn btn-primary btn-sm">Upload</button>
                 </form>
               </div>
@@ -110,7 +110,7 @@
     {% else %}
     <div class="empty">
       <div class="empty-icon">📋</div>
-      <p>No load confirmations yet.<br/>Click "New Load" to create one.</p>
+      <p>No load confirmations yet.<br/>Tap "New Load" to create one.</p>
     </div>
     {% endif %}
   </div>
@@ -121,7 +121,7 @@
 
     {% if invoices %}
     <div class="table-wrap">
-      <table>
+      <table class="responsive">
         <thead>
           <tr>
             <th>File</th>
@@ -133,12 +133,12 @@
         <tbody>
           {% for inv in invoices %}
           <tr>
-            <td>{{ inv.original }}</td>
-            <td>{{ inv.uploaded.strftime('%b %d, %Y  %I:%M %p') }}</td>
-            <td>
+            <td data-label="File">{{ inv.original }}</td>
+            <td data-label="Submitted">{{ inv.uploaded.strftime('%b %d, %Y  %I:%M %p') }}</td>
+            <td data-label="Status">
               <span class="badge badge-{{ inv.status.lower() }}">{{ inv.status }}</span>
             </td>
-            <td>
+            <td data-label="Download" class="cell-actions">
               <a class="btn btn-ghost btn-sm" href="{{ url_for('download', invoice_id=inv.id) }}">
                 ↓ Download
               </a>
