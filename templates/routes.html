@@ -56,6 +56,10 @@
 
   <div class="card">
     <div class="card-title">All Routes ({{ routes|length }})</div>
+    <p style="color:var(--dim);font-size:0.85rem;margin-top:-0.75rem;margin-bottom:1.25rem;">
+      Routes already used by a load confirmation can be edited but not deleted — removing one
+      would break those records.
+    </p>
     {% if routes %}
     <div class="table-wrap">
       <table class="responsive">
@@ -80,10 +84,17 @@
             <td data-label="Fuel">${{ "%.2f"|format(r.fuel_surcharge|float) }}</td>
             <td data-label="Total" style="color:var(--green);font-weight:600;">${{ "%.2f"|format((r.rate|float) + (r.fuel_surcharge|float)) }}</td>
             <td data-label="" class="cell-actions">
-              <form method="POST" action="{{ url_for('delete_route', route_id=r.id) }}"
-                    onsubmit="return confirm('Delete this route?')">
-                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-              </form>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;">
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_route', route_id=r.id) }}">Edit</a>
+                {% if usage.get(r.id) %}
+                <span class="badge badge-reviewed">In use ({{ usage[r.id] }})</span>
+                {% else %}
+                <form method="POST" action="{{ url_for('delete_route', route_id=r.id) }}"
+                      onsubmit="return confirm('Delete this route?')">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+                {% endif %}
+              </div>
             </td>
           </tr>
           {% endfor %}

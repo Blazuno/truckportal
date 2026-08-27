@@ -7,6 +7,7 @@ from functools import wraps
 from io import BytesIO
 import os, random, string, boto3
 from botocore.client import Config
+from sqlalchemy.exc import IntegrityError
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -126,6 +127,22 @@ def admin_required(f):
             abort(403)
         return f(*args, **kwargs)
     return decorated
+
+def parse_money(value, default=None):
+    """Parse a currency form field. Returns None when it is not a usable amount."""
+    value = (value or '').strip()
+    if not value:
+        return default
+    try:
+        amount = float(value.replace('$', '').replace(',', ''))
+    except ValueError:
+        return None
+    return amount if amount >= 0 else None
+
+def route_usage_counts():
+    """How many load legs reference each route, keyed by route id."""
+    return dict(db.session.query(LoadLeg.route_id, db.func.count(LoadLeg.id))
+                          .group_by(LoadLeg.route_id).all())
 
 def generate_order_number():
     while True:
@@ -657,7 +674,7 @@ def delete_load(load_id):
 @admin_required
 def manage_routes():
     routes = Route.query.order_by(Route.from_loc).all()
-    return render_template('routes.html', routes=routes)
+    return render_template('routes.html', routes=routes, usage=route_usage_counts())
 
 @app.route('/admin/routes/add', methods=['POST'])
 @login_required
@@ -666,24 +683,74 @@ def add_route():
     from_loc = request.form.get('from_loc','').strip()
     to_loc   = request.form.get('to_loc','').strip()
     shipper  = request.form.get('shipper','').strip()
-    rate     = request.form.get('rate','').strip()
-    fuel     = request.form.get('fuel_surcharge','0').strip()
-    if not from_loc or not to_loc or not shipper or not rate:
+    rate     = parse_money(request.form.get('rate'))
+    fuel     = parse_money(request.form.get('fuel_surcharge'), default=0.0)
+    if not from_loc or not to_loc or not shipper:
         flash('All route fields are required.','error')
         return redirect(url_for('manage_routes'))
+    if rate is None or fuel is None:
+        flash('Rate and fuel surcharge must be positive numbers.','error')
+        return redirect(url_for('manage_routes'))
     db.session.add(Route(from_loc=from_loc, to_loc=to_loc, shipper=shipper,
-                         rate=float(rate), fuel_surcharge=float(fuel or 0)))
+                         rate=rate, fuel_surcharge=fuel))
     db.session.commit()
     flash('Route added.','success')
     return redirect(url_for('manage_routes'))
+
+@app.route('/admin/routes/<int:route_id>/edit', methods=['GET','POST'])
+@login_required
+@admin_required
+def edit_route(route_id):
+    route  = Route.query.get_or_404(route_id)
+    in_use = LoadLeg.query.filter_by(route_id=route.id).count()
+
+    if request.method == 'POST':
+        from_loc = request.form.get('from_loc','').strip()
+        to_loc   = request.form.get('to_loc','').strip()
+        shipper  = request.form.get('shipper','').strip()
+        rate     = parse_money(request.form.get('rate'))
+        fuel     = parse_money(request.form.get('fuel_surcharge'), default=0.0)
+
+        if not from_loc or not to_loc or not shipper:
+            flash('All route fields are required.','error')
+            return render_template('edit_route.html', route=route, in_use=in_use, form=request.form)
+        if rate is None or fuel is None:
+            flash('Rate and fuel surcharge must be positive numbers.','error')
+            return render_template('edit_route.html', route=route, in_use=in_use, form=request.form)
+
+        route.from_loc       = from_loc
+        route.to_loc         = to_loc
+        route.shipper        = shipper
+        route.rate           = rate
+        route.fuel_surcharge = fuel
+        db.session.commit()
+        flash('Route updated.','success')
+        return redirect(url_for('manage_routes'))
+
+    return render_template('edit_route.html', route=route, in_use=in_use, form=None)
 
 @app.route('/admin/routes/delete/<int:route_id>', methods=['POST'])
 @login_required
 @admin_required
 def delete_route(route_id):
-    db.session.delete(Route.query.get_or_404(route_id))
-    db.session.commit()
-    flash('Route deleted.','success')
+    route  = Route.query.get_or_404(route_id)
+    in_use = LoadLeg.query.filter_by(route_id=route.id).count()
+
+    # Load confirmations point at routes, so deleting one that is in use would
+    # break those records (and the database rejects it outright).
+    if in_use:
+        flash(f'{route.from_loc} → {route.to_loc} is used by {in_use} load '
+              f'confirmation{"" if in_use == 1 else "s"} and cannot be deleted. '
+              'Edit it instead.', 'error')
+        return redirect(url_for('manage_routes'))
+
+    try:
+        db.session.delete(route)
+        db.session.commit()
+        flash('Route deleted.','success')
+    except IntegrityError:
+        db.session.rollback()
+        flash('That route is still referenced by a load confirmation and cannot be deleted.','error')
     return redirect(url_for('manage_routes'))
 
 # ── Init ──────────────────────────────────────────────────────────────────────
