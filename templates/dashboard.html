@@ -52,7 +52,7 @@
           <tr>
             <th>Order #</th>
             <th>Submitted</th>
-            <th>Pickup Date</th>
+            <th>Date</th>
             <th>Commodity</th>
             <th>Status</th>
             <th>Download</th>
@@ -63,7 +63,7 @@
           <tr>
             <td data-label="Order #" style="color:var(--amber);font-weight:600;">{{ load.order_number }}</td>
             <td data-label="Submitted" style="color:var(--dim);">{{ load.created.strftime('%b %d, %Y') }}</td>
-            <td data-label="Pickup Date">{{ load.pickup_date }}</td>
+            <td data-label="Date">{{ load.load_date }}</td>
             <td data-label="Commodity">{{ load.commodity }}</td>
             <td data-label="Status">
               <span class="badge {% if load.status == 'Confirmed' %}badge-paid{% else %}badge-pending{% endif %}">

@@ -540,9 +540,11 @@ def download_load(load_id):
     load = LoadConfirmation.query.get_or_404(load_id)
     if not session.get('is_admin') and load.user_id != session['user_id']:
         abort(403)
+    # Send each role back to the list it came from
+    home = 'admin_dashboard' if session.get('is_admin') else 'dashboard'
     if load.status != 'Confirmed' or not load.r2_key:
         flash('This load has not been confirmed yet.','error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for(home))
     try:
         url = get_r2().generate_presigned_url('get_object',
               Params={'Bucket': R2_BUCKET, 'Key': load.r2_key}, ExpiresIn=3600)
@@ -550,7 +552,7 @@ def download_load(load_id):
     except Exception as e:
         app.logger.error(f"R2 presign error: {e}")
         flash('Could not generate download link.','error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for(home))
 
 @app.route('/load/<int:load_id>/upload_doc', methods=['POST'])
 @login_required

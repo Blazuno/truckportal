@@ -121,6 +121,9 @@
             onclick="return confirm('Confirm this load and generate the PDF?')">
       ✓ Confirm &amp; Generate PDF
     </button>
+    {% if load.status == 'Confirmed' %}
+    <a class="btn btn-ghost" href="{{ url_for('download_load', load_id=load.id) }}">↓ Download PDF</a>
+    {% endif %}
     <button type="submit" form="deleteLoadForm" class="btn btn-danger push">Delete</button>
   </div>
 </div>

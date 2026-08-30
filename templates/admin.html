@@ -63,7 +63,7 @@
             <th>Order #</th>
             <th>Contractor</th>
             <th>Submitted</th>
-            <th>Pickup Date</th>
+            <th>Date</th>
             <th>Commodity</th>
             <th>Status</th>
             <th>Action</th>
@@ -78,7 +78,7 @@
               <span style="font-size:0.8rem;color:var(--dim);">{{ load.contractor.business_name or '—' }}</span>
             </td>
             <td data-label="Submitted" style="color:var(--dim);">{{ load.created.strftime('%b %d, %Y') }}</td>
-            <td data-label="Pickup Date">{{ load.pickup_date }}</td>
+            <td data-label="Date">{{ load.load_date }}</td>
             <td data-label="Commodity">{{ load.commodity }}</td>
             <td data-label="Status">
               <span class="badge {% if load.status == 'Confirmed' %}badge-paid{% else %}badge-pending{% endif %}">
@@ -86,7 +86,12 @@
               </span>
             </td>
             <td data-label="Action" class="cell-actions">
-              <a class="btn btn-ghost btn-sm" href="{{ url_for('review_load', load_id=load.id) }}">Review</a>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('review_load', load_id=load.id) }}">Review</a>
+                {% if load.status == 'Confirmed' %}
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('download_load', load_id=load.id) }}">↓ PDF</a>
+                {% endif %}
+              </div>
             </td>
           </tr>
           {% endfor %}
