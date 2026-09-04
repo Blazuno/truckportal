@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
-import os, random, string, boto3
+import os, boto3
 from botocore.client import Config
 from sqlalchemy import inspect as sa_inspect, text
 from sqlalchemy.exc import IntegrityError
@@ -98,6 +98,11 @@ class LoadLeg(db.Model):
     route_id = db.Column(db.Integer, db.ForeignKey('route.id'), nullable=False)
     route    = db.relationship('Route')
 
+class Counter(db.Model):
+    """Persistent counters. Holds the last issued load confirmation number."""
+    name  = db.Column(db.String(50), primary_key=True)
+    value = db.Column(db.Integer, nullable=False)
+
 class LoadDoc(db.Model):
     """Documents attached to a load confirmation by the subcontractor."""
     id       = db.Column(db.Integer, primary_key=True)
@@ -177,11 +182,33 @@ def route_usage_counts():
             counts[route_id] = counts.get(route_id, 0) + n
     return counts
 
+# Confirmation numbers count up from here: 1000, 1001, 1002, ...
+ORDER_NUMBER_START = 1000
+
 def generate_order_number():
-    while True:
-        num = ''.join(random.choices(string.digits, k=4)) + random.choice(string.ascii_uppercase)
-        if not LoadConfirmation.query.filter_by(order_number=num).first():
-            return num
+    """Claim the next confirmation number.
+
+    The counter row is locked for the rest of the transaction, so two
+    submissions landing at once cannot be handed the same number. The caller
+    commits it along with the load, meaning a failed submission does not
+    burn a number.
+    """
+    counter = (db.session.query(Counter)
+                         .filter_by(name='order_number')
+                         .with_for_update()
+                         .one_or_none())
+    if counter is None:
+        counter = Counter(name='order_number', value=ORDER_NUMBER_START - 1)
+        db.session.add(counter)
+
+    counter.value += 1
+    # Step over anything already taken — numbers issued before this change,
+    # or a value carried over from an older database.
+    while LoadConfirmation.query.filter_by(order_number=str(counter.value)).first():
+        counter.value += 1
+
+    db.session.flush()
+    return str(counter.value)
 
 # ── PDF Builder ───────────────────────────────────────────────────────────────
 
@@ -808,9 +835,15 @@ def seed_admin():
         db.session.commit()
         print(f"✓ Admin seeded → {admin.email}")
 
+def seed_counters():
+    if db.session.get(Counter, 'order_number') is None:
+        db.session.add(Counter(name='order_number', value=ORDER_NUMBER_START - 1))
+        db.session.commit()
+
 with app.app_context():
     db.create_all()
     seed_admin()
+    seed_counters()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
