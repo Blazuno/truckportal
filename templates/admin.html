@@ -170,6 +170,10 @@
   <!-- Contractor List -->
   <div class="card">
     <div class="card-title">Registered Contractors</div>
+    <p style="color:var(--dim);font-size:0.85rem;margin-top:-0.75rem;margin-bottom:1.25rem;">
+      Deactivating an account blocks sign-in immediately. Invoices and load confirmations
+      stay exactly as they are, and the account can be reactivated at any time.
+    </p>
     {% if contractors %}
     <div class="table-wrap">
       <table class="responsive">
@@ -179,6 +183,8 @@
             <th>Email</th>
             <th>Joined</th>
             <th>Invoices</th>
+            <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -188,6 +194,25 @@
             <td data-label="Email" style="color:var(--dim)">{{ c.email }}</td>
             <td data-label="Joined" style="color:var(--dim)">{{ c.created.strftime('%b %d, %Y') }}</td>
             <td data-label="Invoices">{{ c.invoices|length }}</td>
+            <td data-label="Status">
+              {% if c.active %}
+              <span class="badge badge-paid">Active</span>
+              {% else %}
+              <span class="badge badge-pending">Deactivated</span>
+              {% endif %}
+            </td>
+            <td data-label="" class="cell-actions">
+              {% if c.active %}
+              <form method="POST" action="{{ url_for('deactivate_user', user_id=c.id) }}"
+                    onsubmit="return confirm('Deactivate {{ c.name }}? They will not be able to sign in. Their invoices and load confirmations are kept.')">
+                <button type="submit" class="btn btn-danger btn-sm">Deactivate</button>
+              </form>
+              {% else %}
+              <form method="POST" action="{{ url_for('reactivate_user', user_id=c.id) }}">
+                <button type="submit" class="btn btn-ghost btn-sm">Reactivate</button>
+              </form>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

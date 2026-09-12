@@ -54,6 +54,7 @@ class User(db.Model):
     business_name    = db.Column(db.String(200))
     business_address = db.Column(db.String(300))
     phone            = db.Column(db.String(50))
+    active           = db.Column(db.Boolean, nullable=False, default=True)
     invoices           = db.relationship('Invoice', backref='submitter', lazy=True)
     load_confirmations = db.relationship('LoadConfirmation', backref='contractor', lazy=True)
 
@@ -122,6 +123,13 @@ def login_required(f):
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
             flash('Please log in to continue.', 'error')
+            return redirect(url_for('login'))
+        # Checked per request, so deactivating someone takes effect immediately
+        # rather than whenever their session happens to end.
+        user = db.session.get(User, session['user_id'])
+        if user is None or not user.active:
+            session.clear()
+            flash('This account is no longer active.', 'error')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated
@@ -446,6 +454,9 @@ def login():
         pw    = request.form.get('password','')
         user  = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, pw):
+            if not user.active:
+                flash('This account has been deactivated. Contact the administrator.','error')
+                return render_template('login.html')
             session['user_id']   = user.id
             session['user_name'] = user.name
             session['is_admin']  = user.is_admin
@@ -738,6 +749,40 @@ def delete_load(load_id):
               'still references it. Please report this.', 'error')
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/users/<int:user_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+def deactivate_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if user.id == session['user_id']:
+        flash('You cannot deactivate your own account.','error')
+        return redirect(url_for('admin_dashboard'))
+
+    # Only subcontractors appear in the contractor list, so deactivating an
+    # admin would hide it with no way to switch it back on.
+    if user.is_admin:
+        flash('Admin accounts cannot be deactivated.','error')
+        return redirect(url_for('admin_dashboard'))
+
+    user.active = False
+    db.session.commit()
+    flash(f'{user.name} has been deactivated. Their records are unchanged.','success')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/users/<int:user_id>/reactivate', methods=['POST'])
+@login_required
+@admin_required
+def reactivate_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.is_admin:
+        flash('Admin accounts are always active.','error')
+        return redirect(url_for('admin_dashboard'))
+    user.active = True
+    db.session.commit()
+    flash(f'{user.name} can sign in again.','success')
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/admin/routes')
 @login_required
 @admin_required
@@ -835,6 +880,23 @@ def seed_admin():
         db.session.commit()
         print(f"✓ Admin seeded → {admin.email}")
 
+def ensure_schema():
+    """Add columns introduced after a database was first created.
+
+    db.create_all() only ever creates missing tables, so a column added to an
+    existing model needs an explicit ALTER.
+    """
+    inspector = sa_inspect(db.engine)
+    if 'user' not in inspector.get_table_names():
+        return
+    columns = {c['name'] for c in inspector.get_columns('user')}
+    if 'active' not in columns:
+        # "user" is a reserved word in Postgres, so it stays quoted.
+        db.session.execute(text(
+            'ALTER TABLE "user" ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE'))
+        db.session.commit()
+        print("✓ Added user.active column")
+
 def seed_counters():
     if db.session.get(Counter, 'order_number') is None:
         db.session.add(Counter(name='order_number', value=ORDER_NUMBER_START - 1))
@@ -842,6 +904,7 @@ def seed_counters():
 
 with app.app_context():
     db.create_all()
+    ensure_schema()
     seed_admin()
     seed_counters()
 
