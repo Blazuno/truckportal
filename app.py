@@ -21,8 +21,14 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'fallback-for-local-dev')
 
 database_url = os.environ.get('DATABASE_URL', 'sqlite:///portal.db')
+# Railway hands out postgres:// URLs, which SQLAlchemy does not accept.
+# Name the driver explicitly as well: SQLAlchemy 2.1 changed the default for a
+# bare postgresql:// from psycopg2 to psycopg 3, so leaving it off means the
+# driver depends on whichever SQLAlchemy a rebuild happens to install.
 if database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    database_url = database_url.replace('postgres://', 'postgresql+psycopg2://', 1)
+elif database_url.startswith('postgresql://'):
+    database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
