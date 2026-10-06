@@ -28,7 +28,14 @@
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html { -webkit-text-size-adjust: 100%; }
+    html {
+      -webkit-text-size-adjust: 100%;
+      scroll-behavior: smooth;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
 
     body {
       background: var(--coal);
@@ -436,6 +443,37 @@
 
     .stat-value.amber { color: var(--amber); }
     .stat-value.green { color: var(--green); }
+
+    /* Stat cards double as jump links to the section they summarise */
+    a.stat-card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    a.stat-card:hover {
+      border-color: var(--amber);
+      background: var(--dark);
+    }
+    a.stat-card:hover .stat-label { color: var(--amber); }
+
+    a.stat-card:focus-visible {
+      outline: 2px solid var(--amber);
+      outline-offset: 2px;
+    }
+
+    .stat-card .stat-jump {
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-top: 0.35rem;
+    }
+    a.stat-card:hover .stat-jump { color: var(--amber); }
+
+    /* Keep a jumped-to heading clear of the sticky nav */
+    [id] { scroll-margin-top: calc(var(--nav-h) + 1rem); }
 
     /* ── LEG & DOC ROWS ──
        A label, a description that can run long, and trailing metadata. On a

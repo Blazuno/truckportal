@@ -26,31 +26,41 @@
   {% set paid     = invoices|selectattr('status','equalto','Paid')|list|length %}
 
   <div class="stats-row">
-    <div class="stat-card">
+    <a class="stat-card" href="#loads">
+      <div class="stat-label">Confirmations</div>
+      <div class="stat-value">{{ loads|length }}</div>
+      <div class="stat-jump">View queue &darr;</div>
+    </a>
+    <a class="stat-card" href="#invoices">
       <div class="stat-label">Total Invoices</div>
       <div class="stat-value">{{ total }}</div>
-    </div>
-    <div class="stat-card">
+      <div class="stat-jump">View all &darr;</div>
+    </a>
+    <a class="stat-card" href="#invoices">
       <div class="stat-label">Pending</div>
       <div class="stat-value amber">{{ pending }}</div>
-    </div>
-    <div class="stat-card">
+      <div class="stat-jump">View all &darr;</div>
+    </a>
+    <a class="stat-card" href="#invoices">
       <div class="stat-label">Reviewed</div>
       <div class="stat-value" style="color:var(--blue)">{{ reviewed }}</div>
-    </div>
-    <div class="stat-card">
+      <div class="stat-jump">View all &darr;</div>
+    </a>
+    <a class="stat-card" href="#invoices">
       <div class="stat-label">Paid</div>
       <div class="stat-value green">{{ paid }}</div>
-    </div>
-    <div class="stat-card">
+      <div class="stat-jump">View all &darr;</div>
+    </a>
+    <a class="stat-card" href="#contractors">
       <div class="stat-label">Contractors</div>
       <div class="stat-value">{{ contractors|length }}</div>
-    </div>
+      <div class="stat-jump">View list &darr;</div>
+    </a>
   </div>
 
 
   <!-- Load Confirmations Queue -->
-  <div class="card">
+  <div class="card" id="loads">
     <div class="card-head">
       <div class="card-title">Load Confirmations</div>
       <a href="{{ url_for('manage_routes') }}" class="btn btn-ghost btn-sm">Manage Routes</a>
@@ -107,7 +117,7 @@
   </div>
 
   <!-- Invoice Table -->
-  <div class="card">
+  <div class="card" id="invoices">
     <div class="card-title">All Invoices</div>
 
     {% if invoices %}
@@ -168,7 +178,7 @@
   </div>
 
   <!-- Contractor List -->
-  <div class="card">
+  <div class="card" id="contractors">
     <div class="card-title">Registered Contractors</div>
     <p style="color:var(--dim);font-size:0.85rem;margin-top:-0.75rem;margin-bottom:1.25rem;">
       Deactivating an account blocks sign-in immediately. Invoices and load confirmations
